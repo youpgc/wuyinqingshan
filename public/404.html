@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>雾隐青山</title>
+  <script type="text/javascript">
+    // 单页应用SPA路由重定向
+    // 获取当前路径
+    var pathSegmentsToKeep = 1; // 保留的path段数（对于 /wuyinqingshan/manage 这样的路径）
+    
+    var l = window.location;
+    var repoName = '/wuyinqingshan';
+    
+    // 构建重定向URL
+    var redirectUrl = l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+      repoName + '/?redirect=' + encodeURIComponent(l.pathname.slice(repoName.length)) +
+      (l.search ? '&' + l.search.slice(1) : '') +
+      l.hash;
+    
+    // 重定向到首页，让React Router处理路由
+    window.location.replace(redirectUrl);
+  </script>
+</head>
+<body>
+  <h1>页面重定向中...</h1>
+  <p>如果没有自动跳转，请<a id="link" href="/wuyinqingshan/">点击这里</a></p>
+  <script>
+    document.getElementById('link').href = window.location.protocol + '//' + window.location.hostname + 
+      (window.location.port ? ':' + window.location.port : '') + '/wuyinqingshan/';
+  </script>
+</body>
+</html>

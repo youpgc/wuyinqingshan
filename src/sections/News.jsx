@@ -3,10 +3,12 @@ import { Newspaper, TrendingUp, ExternalLink, RefreshCw } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import ScrollReveal from '../components/ScrollReveal';
 import GlassCard from '../components/GlassCard';
+import { newsService } from '../lib/dataService';
 
 const News = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [newsData, setNewsData] = useState({ categories: [] });
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -15,67 +17,27 @@ const News = () => {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    // 从数据服务获取新闻
+    const data = newsService.getAll();
+    setNewsData(data);
+  }, []);
+
   const handleRefresh = () => {
     setIsRefreshing(true);
-    setTimeout(() => setIsRefreshing(false), 1000);
+    setTimeout(() => {
+      const data = newsService.getAll();
+      setNewsData(data);
+      setIsRefreshing(false);
+    }, 1000);
   };
 
-  // 每日新闻数据 - 基于最新技术动态研读
-  const newsData = {
-    date: currentTime.toLocaleDateString('zh-CN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      weekday: 'long'
-    }),
-    time: currentTime.toLocaleTimeString('zh-CN'),
-    categories: [
-      {
-        name: '前端框架',
-        icon: '⚛️',
-        color: 'from-blue-500 to-cyan-500',
-        items: [
-          { title: 'React 19 正式发布：Server Components 规模化落地', source: 'React Blog', time: '2小时前', hot: true },
-          { title: 'Vue 3.6 信号式状态管理，减少60%不必要渲染', source: 'Vue Blog', time: '5小时前', hot: true },
-          { title: 'Vite 6.0 Environment API 支持多环境构建', source: 'Vite 官方', time: '8小时前', hot: false },
-          { title: 'Angular 19 强化企业级应用与云原生支持', source: 'Angular Blog', time: '12小时前', hot: false },
-        ]
-      },
-      {
-        name: 'AI 编程',
-        icon: '🤖',
-        color: 'from-purple-500 to-pink-500',
-        items: [
-          { title: 'Claude Code vs Copilot：AI编程助手深度对比', source: '雾隐青山', time: '刚刚', hot: true },
-          { title: 'GitHub Copilot X 新增多模态协作与Agent面板', source: 'GitHub Blog', time: '3小时前', hot: true },
-          { title: 'AI 测试生成器可自动生成85%单元测试用例', source: 'Dev.to', time: '6小时前', hot: false },
-          { title: '前端开发者如何借助AI提升效率', source: 'CSDN', time: '10小时前', hot: false },
-        ]
-      },
-      {
-        name: '工程化工具',
-        icon: '🔧',
-        color: 'from-orange-500 to-red-500',
-        items: [
-          { title: 'Vite 6 构建速度提升28%，热更新10ms内', source: 'Vite Blog', time: '1小时前', hot: true },
-          { title: 'Tailwind CSS 4.0 Oxide引擎：构建速度提升5倍', source: 'Tailwind Labs', time: '4小时前', hot: true },
-          { title: 'TypeScript 6.0 正式发布：using关键字内置', source: 'TypeScript Blog', time: '7小时前', hot: false },
-          { title: 'Monorepo + pnpm 成为多项目管理标配', source: '知乎', time: '14小时前', hot: false },
-        ]
-      },
-      {
-        name: '行业趋势',
-        icon: '📈',
-        color: 'from-green-500 to-emerald-500',
-        items: [
-          { title: '2025前端复盘：AI重构生态，前端人破局之路', source: '雾隐青山', time: '刚刚', hot: true },
-          { title: 'WASM成为前端性能优化标配，帧率稳定60fps', source: 'InfoWorld', time: '2小时前', hot: true },
-          { title: '跨端开发进入无感知适配时代', source: '掘金', time: '5小时前', hot: false },
-          { title: '前端架构向"端-边-云"一体化升级', source: '阿里云', time: '11小时前', hot: false },
-        ]
-      }
-    ]
-  };
+  const formattedDate = currentTime.toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long'
+  });
 
   return (
     <section id="news" className="relative py-32 overflow-hidden">
@@ -106,13 +68,15 @@ const News = () => {
               </div>
               <div>
                 <p className="text-white/60 text-sm">今日日期</p>
-                <p className="text-white text-lg font-semibold">{newsData.date}</p>
+                <p className="text-white text-lg font-semibold">{formattedDate}</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
               <div className="text-right">
                 <p className="text-white/60 text-sm">当前时间</p>
-                <p className="text-white text-2xl font-mono font-bold">{newsData.time}</p>
+                <p className="text-white text-2xl font-mono font-bold">
+                  {currentTime.toLocaleTimeString('zh-CN')}
+                </p>
               </div>
               <motion.button
                 onClick={handleRefresh}

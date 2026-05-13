@@ -6,58 +6,58 @@ import GlassCard from '../components/GlassCard';
 const Blog = () => {
   const posts = [
     {
-      title: '深入理解 React Hooks 原理',
-      excerpt: '探索 React Hooks 背后的实现机制，了解 useState 和 useEffect 的工作原理...',
-      image: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=800&h=500&fit=crop',
-      date: '2024-01-15',
-      readTime: '8 分钟',
-      category: 'React',
-      color: 'rgba(97, 218, 251, 0.3)',
-    },
-    {
-      title: 'CSS Grid 布局完全指南',
-      excerpt: '从基础到进阶，全面掌握 CSS Grid 布局的各种技巧和最佳实践...',
-      image: 'https://images.unsplash.com/photo-1507721999472-8ed4421c4af2?w=800&h=500&fit=crop',
-      date: '2024-01-10',
-      readTime: '12 分钟',
-      category: 'CSS',
-      color: 'rgba(38, 77, 228, 0.3)',
-    },
-    {
-      title: 'TypeScript 高级类型体操',
-      excerpt: '学习 TypeScript 的高级类型系统，掌握条件类型、映射类型等高级特性...',
-      image: 'https://images.unsplash.com/photo-1516116216624-53e697fedbea?w=800&h=500&fit=crop',
-      date: '2024-01-05',
+      title: '2025前端复盘：AI重构生态，前端人的生存破局之路',
+      excerpt: '深入分析React 19、Vue 3.6、Vite 6等主流框架的核心迭代，以及AI与前端深度融合的开发实践...',
+      image: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&h=500&fit=crop',
+      date: '2026-05-13',
       readTime: '15 分钟',
+      category: '前端趋势',
+      color: 'rgba(168, 85, 247, 0.3)',
+    },
+    {
+      title: 'TypeScript 6.0 正式发布：开发体验全面升级',
+      excerpt: '详解 TypeScript 6.0 的新特性，包括 using 关键字、strict 默认开启、内置 Temporal 类型支持等重磅更新...',
+      image: 'https://images.unsplash.com/photo-1516116216624-53e697fedbea?w=800&h=500&fit=crop',
+      date: '2026-05-10',
+      readTime: '12 分钟',
       category: 'TypeScript',
       color: 'rgba(49, 120, 198, 0.3)',
     },
     {
-      title: '构建高性能的 Web 应用',
-      excerpt: '分享前端性能优化的实战经验，从加载速度到运行时性能的全面优化...',
-      image: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&h=500&fit=crop',
-      date: '2023-12-28',
+      title: 'Claude Code vs GitHub Copilot：AI编程助手深度对比',
+      excerpt: '从实战角度对比两大AI编程工具，分析各自优势与适用场景，探讨AI如何重塑开发者工作流...',
+      image: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&h=500&fit=crop',
+      date: '2026-05-08',
       readTime: '10 分钟',
-      category: '性能优化',
-      color: 'rgba(255, 107, 107, 0.3)',
+      category: 'AI编程',
+      color: 'rgba(79, 172, 254, 0.3)',
     },
     {
-      title: 'Three.js 3D 网页开发入门',
-      excerpt: '从零开始学习 Three.js，创建令人惊叹的 3D 网页效果和交互体验...',
-      image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&h=500&fit=crop',
-      date: '2023-12-20',
-      readTime: '20 分钟',
-      category: 'WebGL',
-      color: 'rgba(0, 0, 0, 0.3)',
+      title: 'Tailwind CSS 4.0：性能革命与设计新范式',
+      excerpt: '体验 Tailwind CSS 4.0 的全新 Oxide 引擎带来的 5 倍构建速度提升，以及新特性的实际应用...',
+      image: 'https://images.unsplash.com/photo-1507721999472-8ed4421c4af2?w=800&h=500&fit=crop',
+      date: '2026-05-05',
+      readTime: '8 分钟',
+      category: 'CSS',
+      color: 'rgba(0, 242, 254, 0.3)',
     },
     {
-      title: '现代前端工程化实践',
-      excerpt: '探讨现代前端工程化的最佳实践，包括构建工具、CI/CD 和工作流优化...',
-      image: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&h=500&fit=crop',
-      date: '2023-12-15',
-      readTime: '12 分钟',
+      title: 'Vite 6.0 深度解析：Environment API 与性能优化',
+      excerpt: '全面解析 Vite 6.0 的核心更新，包括 Environment API、多环境支持、与 Rolldown 集成等重大改进...',
+      image: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&h=500&fit=crop',
+      date: '2026-05-03',
+      readTime: '10 分钟',
       category: '工程化',
       color: 'rgba(83, 185, 83, 0.3)',
+    },
+    {
+      title: '前端框架内卷落幕：2025技术趋势总结',
+      excerpt: '从框架之争到AI赋能，回顾2025年前端生态的核心变革，展望2026年的技术发展方向...',
+      image: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=800&h=500&fit=crop',
+      date: '2026-04-28',
+      readTime: '15 分钟',
+      category: '前端趋势',
+      color: 'rgba(245, 87, 108, 0.3)',
     },
   ];
 
@@ -77,7 +77,7 @@ const Blog = () => {
             技术博客
           </h2>
           <p className="text-white/60 text-lg max-w-2xl mx-auto">
-            分享学习心得、技术探索和开发经验
+            追踪技术前沿，分享学习心得，记录成长点滴
           </p>
         </ScrollReveal>
 

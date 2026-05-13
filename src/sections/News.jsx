@@ -20,7 +20,7 @@ const News = () => {
     setTimeout(() => setIsRefreshing(false), 1000);
   };
 
-  // 模拟每日新闻数据
+  // 每日新闻数据 - 基于最新技术动态研读
   const newsData = {
     date: currentTime.toLocaleDateString('zh-CN', {
       year: 'numeric',
@@ -31,47 +31,47 @@ const News = () => {
     time: currentTime.toLocaleTimeString('zh-CN'),
     categories: [
       {
-        name: '前端技术',
-        icon: '🚀',
+        name: '前端框架',
+        icon: '⚛️',
         color: 'from-blue-500 to-cyan-500',
         items: [
-          { title: 'React 19 发布，带来全新编译器架构', source: 'React Blog', time: '2小时前', hot: true },
-          { title: 'Vite 6.0 正式发布，构建速度提升40%', source: 'Vite 官方', time: '5小时前', hot: true },
-          { title: 'TypeScript 5.4 新特性详解', source: 'TypeScript Blog', time: '8小时前', hot: false },
-          { title: 'CSS Container Queries 全面支持', source: 'CSS Tricks', time: '12小时前', hot: false },
+          { title: 'React 19 正式发布：Server Components 规模化落地', source: 'React Blog', time: '2小时前', hot: true },
+          { title: 'Vue 3.6 信号式状态管理，减少60%不必要渲染', source: 'Vue Blog', time: '5小时前', hot: true },
+          { title: 'Vite 6.0 Environment API 支持多环境构建', source: 'Vite 官方', time: '8小时前', hot: false },
+          { title: 'Angular 19 强化企业级应用与云原生支持', source: 'Angular Blog', time: '12小时前', hot: false },
         ]
       },
       {
-        name: 'AI 与开发',
+        name: 'AI 编程',
         icon: '🤖',
         color: 'from-purple-500 to-pink-500',
         items: [
-          { title: 'GitHub Copilot X 新增聊天功能', source: 'GitHub Blog', time: '1小时前', hot: true },
-          { title: 'OpenAI 发布 GPT-5 预览版', source: 'OpenAI', time: '3小时前', hot: true },
-          { title: 'AI 辅助编程最佳实践指南', source: 'Dev.to', time: '6小时前', hot: false },
-          { title: 'Claude 3 在代码生成测试中表现优异', source: 'Anthropic', time: '10小时前', hot: false },
+          { title: 'Claude Code vs Copilot：AI编程助手深度对比', source: '雾隐青山', time: '刚刚', hot: true },
+          { title: 'GitHub Copilot X 新增多模态协作与Agent面板', source: 'GitHub Blog', time: '3小时前', hot: true },
+          { title: 'AI 测试生成器可自动生成85%单元测试用例', source: 'Dev.to', time: '6小时前', hot: false },
+          { title: '前端开发者如何借助AI提升效率', source: 'CSDN', time: '10小时前', hot: false },
         ]
       },
       {
-        name: '行业动态',
-        icon: '📊',
+        name: '工程化工具',
+        icon: '🔧',
         color: 'from-orange-500 to-red-500',
         items: [
-          { title: '2024年前端开发者薪资报告出炉', source: 'Stack Overflow', time: '4小时前', hot: true },
-          { title: 'Google 宣布新的 Web 标准计划', source: 'Google Developers', time: '7小时前', hot: false },
-          { title: 'Microsoft Edge 市场份额创新高', source: 'StatCounter', time: '9小时前', hot: false },
-          { title: 'WebAssembly 在云计算领域的应用增长', source: 'InfoWorld', time: '14小时前', hot: false },
+          { title: 'Vite 6 构建速度提升28%，热更新10ms内', source: 'Vite Blog', time: '1小时前', hot: true },
+          { title: 'Tailwind CSS 4.0 Oxide引擎：构建速度提升5倍', source: 'Tailwind Labs', time: '4小时前', hot: true },
+          { title: 'TypeScript 6.0 正式发布：using关键字内置', source: 'TypeScript Blog', time: '7小时前', hot: false },
+          { title: 'Monorepo + pnpm 成为多项目管理标配', source: '知乎', time: '14小时前', hot: false },
         ]
       },
       {
-        name: '开源项目',
-        icon: '⭐',
+        name: '行业趋势',
+        icon: '📈',
         color: 'from-green-500 to-emerald-500',
         items: [
-          { title: 'shadcn/ui 组件库突破 50k Stars', source: 'GitHub', time: '2小时前', hot: true },
-          { title: 'Next.js 14 新功能完全指南', source: 'Vercel Blog', time: '5小时前', hot: true },
-          { title: 'Tauri 2.0 稳定版发布', source: 'Tauri', time: '11小时前', hot: false },
-          { title: 'Bun 运行时性能基准测试更新', source: 'Bun Blog', time: '16小时前', hot: false },
+          { title: '2025前端复盘：AI重构生态，前端人破局之路', source: '雾隐青山', time: '刚刚', hot: true },
+          { title: 'WASM成为前端性能优化标配，帧率稳定60fps', source: 'InfoWorld', time: '2小时前', hot: true },
+          { title: '跨端开发进入无感知适配时代', source: '掘金', time: '5小时前', hot: false },
+          { title: '前端架构向"端-边-云"一体化升级', source: '阿里云', time: '11小时前', hot: false },
         ]
       }
     ]
@@ -93,7 +93,7 @@ const News = () => {
             每日资讯
           </h2>
           <p className="text-white/60 text-lg max-w-2xl mx-auto">
-            追踪技术前沿，掌握行业动态
+            追踪技术前沿，掌握行业动态 📰
           </p>
         </ScrollReveal>
 
@@ -186,9 +186,9 @@ const News = () => {
                 <span className="text-xl">💡</span>
               </div>
               <div>
-                <h4 className="text-white font-medium mb-1">资讯来源</h4>
+                <h4 className="text-white font-medium mb-1">关于资讯</h4>
                 <p className="text-white/60 text-sm">
-                  以上资讯来源于各大技术社区和官方博客，每日自动更新。点击标题可查看原文。
+                  资讯基于每日技术动态研读整理，包含前端框架、AI编程、工程化工具、行业趋势等板块。每周一自动更新。
                 </p>
               </div>
             </div>

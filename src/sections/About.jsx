@@ -1,22 +1,29 @@
 import { motion } from 'framer-motion';
-import { User, Mail, MapPin, Calendar, Code, Coffee, Heart } from 'lucide-react';
+import { User, Mail, MapPin, Calendar, Code, Coffee, Heart, Sparkles } from 'lucide-react';
 import ScrollReveal from '../components/ScrollReveal';
 import GlassCard from '../components/GlassCard';
 import GradientBorder from '../components/GradientBorder';
 
 const About = () => {
   const stats = [
-    { number: '3+', label: '年开发经验', icon: Code },
-    { number: '50+', label: '完成项目', icon: Coffee },
-    { number: '100%', label: '热情投入', icon: Heart },
+    { number: '5+', label: '年前端经验', icon: Code },
+    { number: '30+', label: '完成项目', icon: Coffee },
+    { number: '100%', label: '技术热情', icon: Heart },
   ];
 
   const skills = [
-    { name: 'React/Vue', level: 90, color: '#61dafb' },
-    { name: 'TypeScript', level: 85, color: '#3178c6' },
-    { name: 'Node.js', level: 80, color: '#339933' },
-    { name: 'UI/UX设计', level: 85, color: '#ff6b6b' },
-    { name: 'Three.js', level: 70, color: '#000000' },
+    { name: 'React / Next.js', level: 92, color: '#61dafb' },
+    { name: 'TypeScript', level: 88, color: '#3178c6' },
+    { name: 'Vue / Nuxt', level: 85, color: '#42b883' },
+    { name: 'Tailwind CSS', level: 90, color: '#06b6d4' },
+    { name: 'AI 辅助开发', level: 85, color: '#a855f7' },
+  ];
+
+  const techInterests = [
+    { icon: '🤖', name: 'AI编程', desc: 'GitHub Copilot / Claude Code' },
+    { icon: '⚡', name: '性能优化', desc: 'Core Web Vitals' },
+    { icon: '🎨', name: '创意设计', desc: 'UI/UX Design' },
+    { icon: '🔧', name: '工程化', desc: 'Vite / Turbopack' },
   ];
 
   return (
@@ -35,7 +42,7 @@ const About = () => {
             关于我
           </h2>
           <p className="text-white/60 text-lg max-w-2xl mx-auto">
-            一个热爱技术与设计的创造者，致力于用代码实现创意，用设计传递价值
+            热爱技术，追逐前沿，在代码与设计之间寻找平衡
           </p>
         </ScrollReveal>
 
@@ -46,19 +53,19 @@ const About = () => {
               <div className="space-y-6">
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                    <User className="w-8 h-8 text-white" />
+                    <Sparkles className="w-8 h-8 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-bold text-white">张三</h3>
-                    <p className="text-white/60">全栈开发工程师 / 创意设计师</p>
+                    <h3 className="text-2xl font-bold text-white">Yaron</h3>
+                    <p className="text-white/60">前端开发者 / 技术博客作者</p>
                   </div>
                 </div>
 
                 <div className="space-y-4">
                   {[
                     { icon: MapPin, text: '中国 · 北京' },
-                    { icon: Mail, text: 'your.email@example.com' },
-                    { icon: Calendar, text: '3年+ 开发经验' },
+                    { icon: Mail, text: 'yaron@wuyinqingshan.com' },
+                    { icon: Calendar, text: '2019年 - 至今' },
                   ].map((item, index) => (
                     <div key={index} className="flex items-center gap-3 text-white/70">
                       <item.icon className="w-5 h-5 text-purple-400" />
@@ -68,9 +75,14 @@ const About = () => {
                 </div>
 
                 <p className="text-white/60 leading-relaxed">
-                  我是一名充满激情的前端开发者，专注于创造美观且功能强大的Web应用。
-                  我相信好的设计不仅仅是外表，更是用户体验的核心。
-                  在工作之余，我喜欢探索新技术，参与开源项目，以及分享我的学习心得。
+                  我是一名深耕前端领域多年的开发者，经历了从 jQuery 到 React/Vue 
+                  的技术变革，见证了前端工程化从无到有的过程。目前专注于 React 生态、
+                  TypeScript、以及 AI 辅助编程工具的研究与应用。
+                </p>
+
+                <p className="text-white/60 leading-relaxed">
+                  热衷于分享技术心得，相信"输出是最好的输入"。在这个博客，我会记录
+                  学习过程、分析技术趋势、分享实战经验，与你一起成长。
                 </p>
               </div>
             </GradientBorder>
@@ -79,7 +91,7 @@ const About = () => {
           {/* 右侧：技能展示 */}
           <ScrollReveal direction="right" delay={0.2}>
             <div className="space-y-6">
-              <h3 className="text-xl font-semibold text-white mb-6">技能专长</h3>
+              <h3 className="text-xl font-semibold text-white mb-6">技术栈</h3>
               {skills.map((skill, index) => (
                 <div key={index} className="space-y-2">
                   <div className="flex justify-between text-sm">
@@ -98,6 +110,24 @@ const About = () => {
                   </div>
                 </div>
               ))}
+
+              {/* 技术关注点 */}
+              <div className="pt-6">
+                <h4 className="text-lg font-medium text-white mb-4">当前关注</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  {techInterests.map((item, index) => (
+                    <GlassCard key={index} className="p-3" hoverEffect={false}>
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{item.icon}</span>
+                        <div>
+                          <div className="text-white font-medium text-sm">{item.name}</div>
+                          <div className="text-white/40 text-xs">{item.desc}</div>
+                        </div>
+                      </div>
+                    </GlassCard>
+                  ))}
+                </div>
+              </div>
             </div>
           </ScrollReveal>
         </div>

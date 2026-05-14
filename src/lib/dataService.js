@@ -205,13 +205,28 @@ export const messageService = {
 // ========== 访问统计 ==========
 export const analyticsService = {
   getData() {
-    const data = localStorage.getItem(STORAGE_KEYS.ANALYTICS);
-    return JSON.parse(data || '{"visits":[],"totalVisits":0,"uniqueVisitors":0}');
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.ANALYTICS);
+      const parsed = data ? JSON.parse(data) : {};
+      // 确保 visits 是数组
+      return {
+        visits: Array.isArray(parsed.visits) ? parsed.visits : [],
+        totalVisits: parsed.totalVisits || 0,
+        uniqueVisitors: parsed.uniqueVisitors || 0
+      };
+    } catch {
+      return { visits: [], totalVisits: 0, uniqueVisitors: 0 };
+    }
   },
 
   recordVisit() {
     const data = this.getData();
     const today = new Date().toISOString().split('T')[0];
+    
+    // 确保 visits 是数组
+    if (!Array.isArray(data.visits)) {
+      data.visits = [];
+    }
     
     // 记录今日访问
     const todayVisit = data.visits.find(v => v.date === today);
@@ -232,13 +247,15 @@ export const analyticsService = {
 
   getLast7Days() {
     const data = this.getData();
+    // 确保 visits 是数组
+    const visits = Array.isArray(data.visits) ? data.visits : [];
     const last7Days = [];
     for (let i = 6; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().split('T')[0];
       const displayDate = `${date.getMonth() + 1}-${date.getDate()}`;
-      const visit = data.visits.find(v => v.date === dateStr);
+      const visit = visits.find(v => v.date === dateStr);
       last7Days.push({
         date: displayDate,
         visits: visit ? visit.count : Math.floor(Math.random() * 100) + 50
@@ -256,7 +273,7 @@ export const analyticsService = {
     
     return {
       totalVisits: data.totalVisits || 12345,
-      uniqueVisitors: Math.floor(data.totalVisits * 0.7) || 8234,
+      uniqueVisitors: Math.floor((data.totalVisits || 12345) * 0.7),
       todayVisits: today,
       change: change > 0 ? `+${change}%` : `${change}%`
     };

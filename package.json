@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "homepage": "https://yaron.github.io/wuyinqingshan",
+  "homepage": "https://youpgc.github.io/wuyinqingshan",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

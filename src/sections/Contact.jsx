@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Mail, Send, CheckCircle, User, MessageSquare } from 'lucide-react';
 import ScrollReveal from '../components/ScrollReveal';
 import GlassCard from '../components/GlassCard';
-import { messageAPI } from '../lib/apiService';
+import { db } from '../lib/supabase';
 
 export default function Contact() {
   const [formData, setFormData] = useState({
@@ -21,8 +21,7 @@ export default function Contact() {
     setError('');
 
     try {
-      // 提交到后端API
-      await messageAPI.create({
+      await db.messages.create({
         name: formData.name,
         email: formData.email,
         content: formData.message
@@ -31,8 +30,6 @@ export default function Contact() {
       setLoading(false);
       setSubmitted(true);
       setFormData({ name: '', email: '', message: '' });
-
-      // 3秒后重置状态
       setTimeout(() => setSubmitted(false), 3000);
     } catch (err) {
       setLoading(false);
@@ -42,12 +39,10 @@ export default function Contact() {
 
   return (
     <section id="contact" className="relative py-32 overflow-hidden">
-      {/* 背景装饰 */}
       <div className="absolute top-0 left-1/3 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl" />
       <div className="absolute bottom-0 right-1/3 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl" />
 
       <div className="max-w-4xl mx-auto px-6">
-        {/* 标题 */}
         <ScrollReveal className="text-center mb-16">
           <span className="text-purple-400 text-sm font-medium tracking-wider uppercase mb-4 block">
             Contact
@@ -81,9 +76,7 @@ export default function Contact() {
                 )}
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-white/80 mb-2">
-                      您的姓名
-                    </label>
+                    <label className="block text-sm font-medium text-white/80 mb-2">您的姓名</label>
                     <div className="relative">
                       <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
                       <input
@@ -97,9 +90,7 @@ export default function Contact() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-white/80 mb-2">
-                      邮箱地址
-                    </label>
+                    <label className="block text-sm font-medium text-white/80 mb-2">邮箱地址</label>
                     <div className="relative">
                       <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
                       <input
@@ -115,9 +106,7 @@ export default function Contact() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-white/80 mb-2">
-                    留言内容
-                  </label>
+                  <label className="block text-sm font-medium text-white/80 mb-2">留言内容</label>
                   <div className="relative">
                     <MessageSquare className="absolute left-4 top-4 w-5 h-5 text-white/40" />
                     <textarea

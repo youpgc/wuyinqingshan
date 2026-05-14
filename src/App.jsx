@@ -13,18 +13,24 @@ import Contact from './sections/Contact';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './manage/Login';
 import ManageApp from './manage/ManageApp';
-import { analyticsAPI } from './lib/apiService';
 
 // 访问统计追踪组件 - 记录真实访问数据
 function AnalyticsTracker() {
   useEffect(() => {
-    // 生成访客ID
-    const visitorId = localStorage.getItem('wuyinqingshan_visitor_id') || 
-      'visitor_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    localStorage.setItem('wuyinqingshan_visitor_id', visitorId);
+    const recordVisit = async () => {
+      try {
+        const visitorId = localStorage.getItem('wuyinqingshan_visitor_id') || 
+          'visitor_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('wuyinqingshan_visitor_id', visitorId);
+        
+        const { db } = await import('./lib/supabase');
+        await db.visits.record(visitorId, 'home');
+      } catch (err) {
+        console.error('Visit record error:', err);
+      }
+    };
     
-    // 记录真实访问
-    analyticsAPI.recordVisit(visitorId, 'home').catch(() => {});
+    recordVisit();
   }, []);
   
   return null;

@@ -8,11 +8,11 @@ const Navigation = () => {
   const [activeSection, setActiveSection] = useState('');
 
   const navItems = [
-    { name: '首页', href: '#/' },
-    { name: '关于', href: '#about' },
-    { name: '作品', href: '#portfolio' },
-    { name: '博客', href: '#blog' },
-    { name: '资讯', href: '#news' },
+    { name: '首页', id: 'home' },
+    { name: '关于', id: 'about' },
+    { name: '作品', id: 'portfolio' },
+    { name: '博客', id: 'blog' },
+    { name: '资讯', id: 'news' },
   ];
 
   useEffect(() => {
@@ -20,8 +20,8 @@ const Navigation = () => {
       setIsScrolled(window.scrollY > 50);
 
       // 检测当前活动区域
-      const sections = navItems.map(item => item.href.slice(1));
-      for (const section of sections.reverse()) {
+      for (let i = navItems.length - 1; i >= 0; i--) {
+        const section = navItems[i].id;
         const element = document.getElementById(section);
         if (element) {
           const rect = element.getBoundingClientRect();
@@ -37,19 +37,9 @@ const Navigation = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleNavClick = (e, href) => {
-    // 如果是路由链接（以#/开头但不是锚点）
-    if (href === '#/' || href === '#') {
-      e.preventDefault();
-      window.location.hash = '/';
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      setIsMobileMenuOpen(false);
-      return;
-    }
-    
-    // 锚点链接
+  const handleNavClick = (e, id) => {
     e.preventDefault();
-    const element = document.querySelector(href);
+    const element = document.getElementById(id);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
     }
@@ -75,7 +65,7 @@ const Navigation = () => {
               href="#/"
               className="flex items-center gap-2 text-white font-bold text-xl"
               whileHover={{ scale: 1.05 }}
-              onClick={(e) => handleNavClick(e, '#/')}
+              onClick={(e) => handleNavClick(e, 'home')}
             >
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
                 <Sparkles className="w-4 h-4 text-white" />
@@ -88,17 +78,17 @@ const Navigation = () => {
               {navItems.map((item) => (
                 <motion.a
                   key={item.name}
-                  href={item.href}
-                  onClick={(e) => handleNavClick(e, item.href)}
+                  href={`#${item.id}`}
+                  onClick={(e) => handleNavClick(e, item.id)}
                   className={`relative px-4 py-2 text-sm font-medium transition-colors rounded-lg ${
-                    activeSection === item.href.slice(1)
+                    activeSection === item.id
                       ? 'text-white'
                       : 'text-white/60 hover:text-white'
                   }`}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  {activeSection === item.href.slice(1) && (
+                  {activeSection === item.id && (
                     <motion.div
                       layoutId="activeNav"
                       className="absolute inset-0 bg-white/10 rounded-lg"
@@ -120,6 +110,7 @@ const Navigation = () => {
                   boxShadow: '0 0 30px rgba(168, 85, 247, 0.5)'
                 }}
                 whileTap={{ scale: 0.95 }}
+                onClick={(e) => handleNavClick(e, 'contact')}
               >
                 联系我
               </motion.a>
@@ -171,13 +162,13 @@ const Navigation = () => {
                 {navItems.map((item, index) => (
                   <motion.a
                     key={item.name}
-                    href={item.href}
-                    onClick={(e) => handleNavClick(e, item.href)}
+                    href={`#${item.id}`}
+                    onClick={(e) => handleNavClick(e, item.id)}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.1 }}
                     className={`block px-4 py-3 rounded-xl text-lg font-medium transition-colors ${
-                      activeSection === item.href.slice(1)
+                      activeSection === item.id
                         ? 'bg-white/10 text-white'
                         : 'text-white/60 hover:bg-white/5 hover:text-white'
                     }`}
@@ -192,7 +183,7 @@ const Navigation = () => {
                   href="#contact"
                   className="block w-full py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white text-center font-medium"
                   whileTap={{ scale: 0.98 }}
-                  onClick={(e) => handleNavClick(e, '#contact')}
+                  onClick={(e) => handleNavClick(e, 'contact')}
                 >
                   联系我
                 </motion.a>

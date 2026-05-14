@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Routes, Route, Navigate, HashRouter } from 'react-router-dom';
+import { Routes, Route, Navigate, HashRouter, useLocation } from 'react-router-dom';
 import './styles/animations.css';
 import ParticleBackground from './components/ParticleBackground';
 import Navigation from './components/Navigation';
@@ -36,6 +36,29 @@ function AnalyticsTracker() {
     
     recordVisit();
   }, []);
+  
+  return null;
+}
+
+// 滚动到锚点的组件
+function ScrollToAnchor() {
+  const location = useLocation();
+  
+  useEffect(() => {
+    // 检查 URL 中是否有锚点（在 hash 之后的部分）
+    const hash = window.location.hash;
+    if (hash.includes('#/') && hash.includes('#', 2)) {
+      // 格式: #/xxx#anchor
+      const anchorIndex = hash.indexOf('#', 2);
+      const anchor = hash.substring(anchorIndex + 1);
+      const element = document.getElementById(anchor);
+      if (element) {
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
+    }
+  }, [location]);
   
   return null;
 }
@@ -79,6 +102,7 @@ function App() {
   return (
     <AuthProvider>
       <HashRouter>
+        <ScrollToAnchor />
         <Routes>
           {/* 前台路由 */}
           <Route path="/" element={<Home />} />
@@ -87,6 +111,9 @@ function App() {
           {/* 后台管理路由 */}
           <Route path="/manage/login" element={<Login />} />
           <Route path="/manage/*" element={<ProtectedManage />} />
+          
+          {/* 兼容旧路由 */}
+          <Route path="*" element={<Home />} />
         </Routes>
       </HashRouter>
     </AuthProvider>

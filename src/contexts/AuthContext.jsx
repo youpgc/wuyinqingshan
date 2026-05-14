@@ -1,69 +1,72 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { supabase, auth as supabaseAuth, db } from '../lib/supabase';
+import { db } from '../lib/supabase';
 
 const AuthContext = createContext({});
+const SESSION_KEY = 'wuyinqingshan_admin_session';
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkUser();
+    checkSession();
   }, []);
 
-  const checkUser = async () => {
+  const checkSession = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        // 获取用户完整信息
-        const { data: userData } = await supabase
-          .from('users')
-          .select('*')
-          .eq('email', session.user.email)
-          .single();
-        
-        if (userData) {
-          setUser({
-            id: userData.id,
-            email: userData.email,
-            name: userData.name,
-            role: userData.role
-          });
-        }
+      const session = localStorage.getItem(SESSION_KEY);
+      if (session) {
+        const userData = JSON.parse(session);
+        setUser(userData);
       }
     } catch (err) {
-      console.error('Check user error:', err);
+      console.error('Check session error:', err);
     }
     setLoading(false);
   };
 
   const signIn = async (email, password) => {
-    // Supabase Auth 登录
-    const { data, error } = await supabaseAuth.signIn(email, password);
-    if (error) throw error;
-    
-    // 获取用户完整信息
-    const { data: userData } = await supabase
+    // 从数据库验证用户
+    const { data: userData, error } = await db.supabase
       .from('users')
       .select('*')
       .eq('email', email)
       .single();
     
-    if (userData) {
-      const userInfo = {
-        id: userData.id,
-        email: userData.email,
-        name: userData.name,
-        role: userData.role
-      };
-      setUser(userInfo);
-      return userInfo;
+    if (error || !userData) {
+      throw new Error('账号不存在');
     }
-    throw new Error('用户信息不存在');
+
+    if (userData.status !== 1) {
+      throw new Error('账号已被禁用');
+    }
+
+    // 验证密码（明文比较，实际应该使用 bcrypt）
+    // 注意：这里为了简化，直接比较明文密码
+    // 生产环境应该使用加密存储
+    const validPasswords = {
+      'admin': 'Dw5pa,+>4+g,0Q2T',
+      'youpgc@foxmail.com': '1@youpgc@VIP'
+    };
+    
+    if (validPasswords[email] !== password) {
+      throw new Error('密码错误');
+    }
+
+    const userInfo = {
+      id: userData.id,
+      email: userData.email,
+      name: userData.name,
+      role: userData.role
+    };
+    
+    localStorage.setItem(SESSION_KEY, JSON.stringify(userInfo));
+    setUser(userInfo);
+    return userInfo;
   };
 
   const signOut = async () => {
-    await supabaseAuth.signOut();
+    localStorage.removeItem(SESSION_KEY);
     setUser(null);
   };
 

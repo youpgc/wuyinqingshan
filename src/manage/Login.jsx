@@ -18,10 +18,9 @@ export default function Login() {
 
     try {
       await signIn(email, password);
-      // 登录成功后跳转到管理后台
       window.location.hash = '/manage';
     } catch (err) {
-      setError(err.message || '登录失败，请检查邮箱和密码');
+      setError(err.message || '登录失败');
     } finally {
       setLoading(false);
     }
@@ -29,7 +28,6 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a0a0f] via-[#12121a] to-[#0a0a0f] p-4">
-      {/* 背景装饰 */}
       <div className="absolute top-20 left-20 w-72 h-72 bg-purple-500/20 rounded-full blur-3xl" />
       <div className="absolute bottom-20 right-20 w-72 h-72 bg-cyan-500/20 rounded-full blur-3xl" />
 
@@ -38,9 +36,7 @@ export default function Login() {
         animate={{ opacity: 1, y: 0 }}
         className="relative w-full max-w-md"
       >
-        {/* 卡片 */}
         <div className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-8 shadow-2xl">
-          {/* Logo */}
           <div className="text-center mb-8">
             <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-4">
               <Sparkles className="w-8 h-8 text-white" />
@@ -49,7 +45,6 @@ export default function Login() {
             <p className="text-white/60 mt-1">管理后台登录</p>
           </div>
 
-          {/* 错误提示 */}
           {error && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
@@ -60,12 +55,9 @@ export default function Login() {
             </motion.div>
           )}
 
-          {/* 登录表单 */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-white/80 mb-2">
-                邮箱地址
-              </label>
+              <label className="block text-sm font-medium text-white/80 mb-2">邮箱地址</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
                 <input
@@ -73,16 +65,13 @@ export default function Login() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-white/40 focus:outline-none focus:border-purple-500/50 transition-colors"
-                  placeholder="admin@wuyinqingshan.com"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-purple-500/50 transition-colors"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-white/80 mb-2">
-                密码
-              </label>
+              <label className="block text-sm font-medium text-white/80 mb-2">密码</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
                 <input
@@ -123,12 +112,6 @@ export default function Login() {
               )}
             </motion.button>
           </form>
-
-          {/* 提示 */}
-          <div className="mt-6 text-center text-sm text-white/40">
-            <p>默认账号: admin@wuyinqingshan.com</p>
-            <p>默认密码: admin123</p>
-          </div>
         </div>
       </motion.div>
     </div>

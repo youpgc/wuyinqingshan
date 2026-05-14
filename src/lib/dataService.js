@@ -203,30 +203,45 @@ export const messageService = {
 };
 
 // ========== 访问统计 ==========
+const VISITOR_ID_KEY = 'wuyinqingshan_visitor_id';
+
+// 生成唯一访客ID
+function getOrCreateVisitorId() {
+  let visitorId = localStorage.getItem(VISITOR_ID_KEY);
+  if (!visitorId) {
+    visitorId = 'visitor_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem(VISITOR_ID_KEY, visitorId);
+  }
+  return visitorId;
+}
+
 export const analyticsService = {
   getData() {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.ANALYTICS);
       const parsed = data ? JSON.parse(data) : {};
-      // 确保 visits 是数组
       return {
         visits: Array.isArray(parsed.visits) ? parsed.visits : [],
         totalVisits: parsed.totalVisits || 0,
-        uniqueVisitors: parsed.uniqueVisitors || 0
+        uniqueVisitors: parsed.uniqueVisitors || 0,
+        visitorIds: Array.isArray(parsed.visitorIds) ? parsed.visitorIds : [],
+        pageViews: parsed.pageViews || {}
       };
     } catch {
-      return { visits: [], totalVisits: 0, uniqueVisitors: 0 };
+      return { visits: [], totalVisits: 0, uniqueVisitors: 0, visitorIds: [], pageViews: {} };
     }
   },
 
-  recordVisit() {
+  // 记录真实访问
+  recordVisit(page = 'home') {
     const data = this.getData();
     const today = new Date().toISOString().split('T')[0];
+    const visitorId = getOrCreateVisitorId();
     
-    // 确保 visits 是数组
-    if (!Array.isArray(data.visits)) {
-      data.visits = [];
-    }
+    // 确保数组存在
+    if (!Array.isArray(data.visits)) data.visits = [];
+    if (!Array.isArray(data.visitorIds)) data.visitorIds = [];
+    if (!data.pageViews) data.pageViews = {};
     
     // 记录今日访问
     const todayVisit = data.visits.find(v => v.date === today);
@@ -236,6 +251,15 @@ export const analyticsService = {
       data.visits.push({ date: today, count: 1 });
     }
     
+    // 记录独立访客
+    if (!data.visitorIds.includes(visitorId)) {
+      data.visitorIds.push(visitorId);
+      data.uniqueVisitors = data.visitorIds.length;
+    }
+    
+    // 记录页面浏览
+    data.pageViews[page] = (data.pageViews[page] || 0) + 1;
+    
     // 保持最近30天数据
     if (data.visits.length > 30) {
       data.visits = data.visits.slice(-30);
@@ -243,27 +267,31 @@ export const analyticsService = {
     
     data.totalVisits++;
     localStorage.setItem(STORAGE_KEYS.ANALYTICS, JSON.stringify(data));
+    
+    console.log('📊 访问已记录:', { date: today, page, visitorId });
   },
 
+  // 获取最近7天真实数据
   getLast7Days() {
     const data = this.getData();
-    // 确保 visits 是数组
     const visits = Array.isArray(data.visits) ? data.visits : [];
     const last7Days = [];
+    
     for (let i = 6; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().split('T')[0];
-      const displayDate = `${date.getMonth() + 1}-${date.getDate()}`;
+      const displayDate = `${date.getMonth() + 1}/${date.getDate()}`;
       const visit = visits.find(v => v.date === dateStr);
       last7Days.push({
         date: displayDate,
-        visits: visit ? visit.count : Math.floor(Math.random() * 100) + 50
+        visits: visit ? visit.count : 0  // 真实数据，没有则为0
       });
     }
     return last7Days;
   },
 
+  // 获取统计数据
   getStats() {
     const data = this.getData();
     const last7Days = this.getLast7Days();
@@ -272,11 +300,23 @@ export const analyticsService = {
     const change = yesterday > 0 ? ((today - yesterday) / yesterday * 100).toFixed(1) : 0;
     
     return {
-      totalVisits: data.totalVisits || 12345,
-      uniqueVisitors: Math.floor((data.totalVisits || 12345) * 0.7),
+      totalVisits: data.totalVisits || 0,
+      uniqueVisitors: data.uniqueVisitors || 0,
       todayVisits: today,
-      change: change > 0 ? `+${change}%` : `${change}%`
+      yesterdayVisits: yesterday,
+      change: change > 0 ? `+${change}%` : change < 0 ? `${change}%` : '0%',
+      pageViews: data.pageViews || {}
     };
+  },
+  
+  // 获取热门页面
+  getTopPages(limit = 5) {
+    const data = this.getData();
+    const pageViews = data.pageViews || {};
+    return Object.entries(pageViews)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+      .map(([page, count]) => ({ page, count }));
   }
 };
 

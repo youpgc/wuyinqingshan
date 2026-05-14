@@ -103,35 +103,50 @@ export default function ManageApp() {
   );
 }
 
-// 数据概览
+// 数据概览 - 显示真实访问数据
 function DashboardOverview() {
   const [stats, setStats] = useState({
-    totalVisits: 1234,
-    uniqueVisitors: 823,
-    todayVisits: 156,
+    totalVisits: 0,
+    uniqueVisitors: 0,
+    todayVisits: 0,
+    yesterdayVisits: 0,
+    change: '0%',
     unreadMessages: 0
   });
+  const [chartData, setChartData] = useState([]);
 
   useEffect(() => {
     const analyticsStats = analyticsService.getStats();
+    const last7Days = analyticsService.getLast7Days();
     const unreadCount = messageService.getUnreadCount();
+    
     setStats({
-      totalVisits: analyticsStats.totalVisits || 1234,
-      uniqueVisitors: analyticsStats.uniqueVisitors || 823,
-      todayVisits: analyticsStats.todayVisits || 156,
+      totalVisits: analyticsStats.totalVisits || 0,
+      uniqueVisitors: analyticsStats.uniqueVisitors || 0,
+      todayVisits: analyticsStats.todayVisits || 0,
+      yesterdayVisits: analyticsStats.yesterdayVisits || 0,
+      change: analyticsStats.change || '0%',
       unreadMessages: unreadCount
     });
+    setChartData(last7Days);
   }, []);
+
+  // 计算图表最大值
+  const maxVisits = Math.max(...chartData.map(d => d.visits), 1);
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-white">数据概览</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-white">数据概览</h2>
+        <span className="text-white/40 text-sm">数据来源：本地存储</span>
+      </div>
+      
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { title: '总访问量', value: stats.totalVisits.toLocaleString(), icon: Eye },
-          { title: '独立访客', value: stats.uniqueVisitors.toLocaleString(), icon: Users },
-          { title: '今日访问', value: stats.todayVisits.toString(), icon: TrendingUp },
-          { title: '未读留言', value: stats.unreadMessages.toString(), icon: Mail },
+          { title: '总访问量', value: stats.totalVisits.toLocaleString(), icon: Eye, color: 'text-blue-400' },
+          { title: '独立访客', value: stats.uniqueVisitors.toLocaleString(), icon: Users, color: 'text-green-400' },
+          { title: '今日访问', value: stats.todayVisits.toString(), icon: TrendingUp, color: 'text-purple-400', change: stats.change },
+          { title: '未读留言', value: stats.unreadMessages.toString(), icon: Mail, color: 'text-orange-400' },
         ].map((stat, index) => (
           <motion.div
             key={index}
@@ -140,27 +155,41 @@ function DashboardOverview() {
             transition={{ delay: index * 0.1 }}
             className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10"
           >
-            <stat.icon className="w-6 h-6 text-purple-400 mb-4" />
+            <stat.icon className={`w-6 h-6 ${stat.color} mb-4`} />
             <p className="text-white/60 text-sm">{stat.title}</p>
-            <p className="text-2xl font-bold text-white">{stat.value}</p>
+            <div className="flex items-end gap-2">
+              <p className="text-2xl font-bold text-white">{stat.value}</p>
+              {stat.change && <span className={`text-xs ${stat.change.startsWith('+') ? 'text-green-400' : stat.change.startsWith('-') ? 'text-red-400' : 'text-white/40'}`}>{stat.change}</span>}
+            </div>
           </motion.div>
         ))}
       </div>
       
       <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
         <h3 className="text-lg font-semibold text-white mb-4">访问趋势（最近7天）</h3>
-        <div className="h-48 flex items-end gap-2">
-          {[65, 78, 52, 89, 95, 120, 156].map((value, index) => (
-            <div key={index} className="flex-1 flex flex-col items-center gap-2">
-              <motion.div
-                initial={{ height: 0 }}
-                animate={{ height: `${(value / 156) * 100}%` }}
-                className="w-full bg-gradient-to-t from-purple-500 to-pink-500 rounded-t-lg"
-              />
-              <span className="text-xs text-white/40">{['一', '二', '三', '四', '五', '六', '日'][index]}</span>
+        {chartData.length > 0 && chartData.some(d => d.visits > 0) ? (
+          <div className="h-48 flex items-end gap-2">
+            {chartData.map((item, index) => (
+              <div key={index} className="flex-1 flex flex-col items-center gap-2">
+                <motion.div
+                  initial={{ height: 0 }}
+                  animate={{ height: `${(item.visits / maxVisits) * 100}%` }}
+                  className="w-full bg-gradient-to-t from-purple-500 to-pink-500 rounded-t-lg min-h-[4px]"
+                />
+                <span className="text-xs text-white/40">{item.date}</span>
+                <span className="text-xs text-white/60">{item.visits}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="h-48 flex items-center justify-center text-white/40">
+            <div className="text-center">
+              <TrendingUp className="w-12 h-12 mx-auto mb-2 opacity-50" />
+              <p>暂无访问数据</p>
+              <p className="text-sm mt-1">访问博客后将自动记录</p>
             </div>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -13,31 +13,13 @@ import Contact from './sections/Contact';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './manage/Login';
 import ManageApp from './manage/ManageApp';
+import { analyticsService } from './lib/dataService';
 
-// 访问统计追踪组件
+// 访问统计追踪组件 - 记录真实访问数据
 function AnalyticsTracker() {
   useEffect(() => {
-    const trackVisit = () => {
-      const analytics = JSON.parse(localStorage.getItem('wuyinqingshan_analytics') || '[]');
-      const today = new Date().toISOString().split('T')[0];
-      const existingDay = analytics.find(a => a.date === today);
-      
-      if (existingDay) {
-        existingDay.visits += 1;
-        existingDay.pageViews += 1;
-      } else {
-        analytics.push({
-          date: today,
-          visits: 1,
-          uniqueVisitors: 1,
-          pageViews: 1
-        });
-      }
-      
-      localStorage.setItem('wuyinqingshan_analytics', JSON.stringify(analytics));
-    };
-    
-    trackVisit();
+    // 记录真实访问
+    analyticsService.recordVisit('home');
   }, []);
   
   return null;

@@ -17,7 +17,6 @@ import ManageApp from './manage/ManageApp';
 // 访问统计追踪组件
 function AnalyticsTracker() {
   useEffect(() => {
-    // 记录页面访问
     const trackVisit = () => {
       const analytics = JSON.parse(localStorage.getItem('wuyinqingshan_analytics') || '[]');
       const today = new Date().toISOString().split('T')[0];
@@ -46,24 +45,6 @@ function AnalyticsTracker() {
 
 // 前台主页
 function Home() {
-  const [searchParams] = useSearchParams();
-  const redirect = searchParams.get('redirect');
-  
-  // 处理404重定向
-  useEffect(() => {
-    if (redirect) {
-      const decodedPath = decodeURIComponent(redirect);
-      // 移除redirect参数并导航到目标路径
-      const cleanUrl = window.location.pathname + window.location.hash;
-      window.history.replaceState({}, '', cleanUrl);
-      
-      // 使用hash路由导航
-      if (decodedPath.startsWith('/manage')) {
-        window.location.hash = decodedPath;
-      }
-    }
-  }, [redirect]);
-  
   return (
     <div className="relative min-h-screen bg-[#0a0a0f] text-white overflow-x-hidden">
       <AnalyticsTracker />
@@ -97,31 +78,23 @@ function ProtectedManage() {
   return isAuthenticated ? <ManageApp /> : <Navigate to="/manage/login" />;
 }
 
-// HashRouter包装器用于管理后台
-function ManageRoutes() {
-  return (
-    <Routes>
-      <Route path="/manage/login" element={<Login />} />
-      <Route path="/manage/*" element={<ProtectedManage />} />
-    </Routes>
-  );
-}
-
 function App() {
-  // 检测是否在管理后台路径
-  const isManagePath = window.location.hash.startsWith('#/manage') || 
-                       window.location.pathname.includes('/manage');
+  // 检测是否在管理后台路径（hash 路由）
+  const isManagePath = window.location.hash.startsWith('#/manage');
   
   return (
     <AuthProvider>
       {isManagePath ? (
-        // 管理后台使用HashRouter
+        // 管理后台使用 HashRouter
         <HashRouter>
-          <ManageRoutes />
+          <Routes>
+            <Route path="/manage/login" element={<Login />} />
+            <Route path="/manage/*" element={<ProtectedManage />} />
+          </Routes>
         </HashRouter>
       ) : (
-        // 前台使用BrowserRouter
-        <BrowserRouter basename="/wuyinqingshan">
+        // 前台使用 BrowserRouter（无 basename，适配 Netlify）
+        <BrowserRouter>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/manage/login" element={<Login />} />

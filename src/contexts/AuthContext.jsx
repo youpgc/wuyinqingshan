@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { db } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext({});
 const SESSION_KEY = 'wuyinqingshan_admin_session';
@@ -27,7 +27,7 @@ export function AuthProvider({ children }) {
 
   const signIn = async (email, password) => {
     // 从数据库验证用户
-    const { data: userData, error } = await db.supabase
+    const { data: userData, error } = await supabase
       .from('users')
       .select('*')
       .eq('email', email)

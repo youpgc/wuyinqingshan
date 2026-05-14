@@ -2,8 +2,8 @@ import { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext({});
 
-// 后端 API 地址 - 部署后替换为实际地址
-const API_BASE = 'https://wuyinqingshan-blog.onrender.com'; // TODO: 部署后替换
+// 后端 API 地址
+const API_BASE = 'https://wuyinqingshan-production.up.railway.app';
 
 const SESSION_KEY = 'wuyinqingshan_admin_session';
 

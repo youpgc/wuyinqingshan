@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Mail, Send, CheckCircle, User, MessageSquare } from 'lucide-react';
 import ScrollReveal from '../components/ScrollReveal';
 import GlassCard from '../components/GlassCard';
+import { messageAPI } from '../lib/apiService';
 
 export default function Contact() {
   const [formData, setFormData] = useState({
@@ -12,30 +13,31 @@ export default function Contact() {
   });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
 
-    // 保存到 localStorage（实际项目中发送到后端）
-    const messages = JSON.parse(localStorage.getItem('wuyinqingshan_messages') || '[]');
-    messages.push({
-      id: Date.now(),
-      ...formData,
-      read: false,
-      createdAt: new Date().toLocaleString('zh-CN')
-    });
-    localStorage.setItem('wuyinqingshan_messages', JSON.stringify(messages));
+    try {
+      // 提交到后端API
+      await messageAPI.create({
+        name: formData.name,
+        email: formData.email,
+        content: formData.message
+      });
+      
+      setLoading(false);
+      setSubmitted(true);
+      setFormData({ name: '', email: '', message: '' });
 
-    // 模拟发送延迟
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    setLoading(false);
-    setSubmitted(true);
-    setFormData({ name: '', email: '', message: '' });
-
-    // 3秒后重置状态
-    setTimeout(() => setSubmitted(false), 3000);
+      // 3秒后重置状态
+      setTimeout(() => setSubmitted(false), 3000);
+    } catch (err) {
+      setLoading(false);
+      setError(err.message || '提交失败，请稍后重试');
+    }
   };
 
   return (
@@ -72,6 +74,11 @@ export default function Contact() {
               </motion.div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-6">
+                {error && (
+                  <div className="p-4 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 text-sm">
+                    {error}
+                  </div>
+                )}
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-white/80 mb-2">

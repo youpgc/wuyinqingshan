@@ -13,8 +13,10 @@ import Contact from './sections/Contact';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './manage/Login';
 import ManageApp from './manage/ManageApp';
+import PostDetail from './pages/PostDetail';
+import { supabase } from './lib/supabase';
 
-// 访问统计追踪组件 - 记录真实访问数据
+// 访问统计追踪组件
 function AnalyticsTracker() {
   useEffect(() => {
     const recordVisit = async () => {
@@ -23,8 +25,10 @@ function AnalyticsTracker() {
           'visitor_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
         localStorage.setItem('wuyinqingshan_visitor_id', visitorId);
         
-        const { db } = await import('./lib/supabase');
-        await db.visits.record(visitorId, 'home');
+        await supabase.from('visits').insert({
+          visitor_id: visitorId,
+          page: 'home'
+        });
       } catch (err) {
         console.error('Visit record error:', err);
       }
@@ -72,26 +76,30 @@ function ProtectedManage() {
 }
 
 function App() {
-  // 检测是否在管理后台路径（hash 路由）
-  const isManagePath = window.location.hash.startsWith('#/manage');
+  const hash = window.location.hash;
+  const isManagePath = hash.startsWith('#/manage');
+  const isPostPath = hash.startsWith('#/post');
   
   return (
     <AuthProvider>
       {isManagePath ? (
-        // 管理后台使用 HashRouter
         <HashRouter>
           <Routes>
             <Route path="/manage/login" element={<Login />} />
             <Route path="/manage/*" element={<ProtectedManage />} />
           </Routes>
         </HashRouter>
+      ) : isPostPath ? (
+        <HashRouter>
+          <Routes>
+            <Route path="/post/:id" element={<PostDetail />} />
+          </Routes>
+        </HashRouter>
       ) : (
-        // 前台使用 BrowserRouter（无 basename，适配 Netlify）
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/manage/login" element={<Login />} />
-            <Route path="/manage/*" element={<ProtectedManage />} />
+            <Route path="/post/:id" element={<PostDetail />} />
           </Routes>
         </BrowserRouter>
       )}

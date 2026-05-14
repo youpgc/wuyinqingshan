@@ -18,6 +18,8 @@ export default function Login() {
 
     try {
       await signIn(email, password);
+      // 登录成功后跳转到管理后台
+      window.location.hash = '/manage';
     } catch (err) {
       setError(err.message || '登录失败，请检查邮箱和密码');
     } finally {

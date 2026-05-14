@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, HashRouter } from 'react-router-dom';
+import { Routes, Route, Navigate, HashRouter } from 'react-router-dom';
 import './styles/animations.css';
 import ParticleBackground from './components/ParticleBackground';
 import Navigation from './components/Navigation';
@@ -76,33 +76,19 @@ function ProtectedManage() {
 }
 
 function App() {
-  const hash = window.location.hash;
-  const isManagePath = hash.startsWith('#/manage');
-  const isPostPath = hash.startsWith('#/post');
-  
   return (
     <AuthProvider>
-      {isManagePath ? (
-        <HashRouter>
-          <Routes>
-            <Route path="/manage/login" element={<Login />} />
-            <Route path="/manage/*" element={<ProtectedManage />} />
-          </Routes>
-        </HashRouter>
-      ) : isPostPath ? (
-        <HashRouter>
-          <Routes>
-            <Route path="/post/:id" element={<PostDetail />} />
-          </Routes>
-        </HashRouter>
-      ) : (
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/post/:id" element={<PostDetail />} />
-          </Routes>
-        </BrowserRouter>
-      )}
+      <HashRouter>
+        <Routes>
+          {/* 前台路由 */}
+          <Route path="/" element={<Home />} />
+          <Route path="/post/:id" element={<PostDetail />} />
+          
+          {/* 后台管理路由 */}
+          <Route path="/manage/login" element={<Login />} />
+          <Route path="/manage/*" element={<ProtectedManage />} />
+        </Routes>
+      </HashRouter>
     </AuthProvider>
   );
 }

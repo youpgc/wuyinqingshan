@@ -58,9 +58,9 @@ export default function PostDetail() {
     return `${minutes} 分钟`;
   };
 
-  // 返回首页
+  // 返回上一页
   const goBack = () => {
-    window.location.hash = '/';
+    window.history.back();
   };
 
   if (loading) {

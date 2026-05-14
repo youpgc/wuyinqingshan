@@ -8,7 +8,7 @@ const Navigation = () => {
   const [activeSection, setActiveSection] = useState('');
 
   const navItems = [
-    { name: '首页', href: '#home' },
+    { name: '首页', href: '#/' },
     { name: '关于', href: '#about' },
     { name: '作品', href: '#portfolio' },
     { name: '博客', href: '#blog' },
@@ -38,6 +38,16 @@ const Navigation = () => {
   }, []);
 
   const handleNavClick = (e, href) => {
+    // 如果是路由链接（以#/开头但不是锚点）
+    if (href === '#/' || href === '#') {
+      e.preventDefault();
+      window.location.hash = '/';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setIsMobileMenuOpen(false);
+      return;
+    }
+    
+    // 锚点链接
     e.preventDefault();
     const element = document.querySelector(href);
     if (element) {
@@ -62,10 +72,10 @@ const Navigation = () => {
           <div className="flex items-center justify-between h-16 md:h-20">
             {/* Logo */}
             <motion.a
-              href="#home"
+              href="#/"
               className="flex items-center gap-2 text-white font-bold text-xl"
               whileHover={{ scale: 1.05 }}
-              onClick={(e) => handleNavClick(e, '#home')}
+              onClick={(e) => handleNavClick(e, '#/')}
             >
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
                 <Sparkles className="w-4 h-4 text-white" />

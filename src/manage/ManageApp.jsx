@@ -4,7 +4,7 @@ import {
   LayoutDashboard, FileText, MessageSquare, BarChart3, 
   Settings, LogOut, Eye, Users, TrendingUp, Plus,
   Edit2, Trash2, Mail, Menu, X as CloseIcon, CheckCircle,
-  Shield, UserPlus, Clock, Activity, ChevronRight
+  Shield, UserPlus, Clock, Activity, ChevronRight, Power
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/supabase';
@@ -19,12 +19,13 @@ export default function ManageApp() {
     { id: 'posts', label: '文章管理', icon: FileText },
     { id: 'messages', label: '访客留言', icon: MessageSquare },
     { id: 'analytics', label: '访问统计', icon: BarChart3 },
+    { id: 'sessions', label: '在线用户', icon: Activity },
     { id: 'settings', label: '系统设置', icon: Settings },
   ];
 
   // 超级管理员专属
   if (isSuperAdmin) {
-    menuItems.splice(4, 0, { id: 'users', label: '用户管理', icon: Shield });
+    menuItems.splice(5, 0, { id: 'users', label: '用户管理', icon: Shield });
   }
 
   return (
@@ -102,6 +103,7 @@ export default function ManageApp() {
           {activeTab === 'posts' && <PostsManager />}
           {activeTab === 'messages' && <MessagesManager />}
           {activeTab === 'analytics' && <AnalyticsView />}
+          {activeTab === 'sessions' && <SessionsManager />}
           {activeTab === 'users' && isSuperAdmin && <UsersManager />}
           {activeTab === 'settings' && <SettingsView />}
         </div>
@@ -542,12 +544,6 @@ function MessagesManager() {
                 </div>
               </div>
               <p className="text-white/80">{msg.content}</p>
-              {msg.reply && (
-                <div className="mt-4 p-4 rounded-lg bg-white/5">
-                  <p className="text-white/60 text-sm mb-1">回复：</p>
-                  <p className="text-white/80">{msg.reply}</p>
-                </div>
-              )}
               <div className="flex items-center gap-2 mt-4">
                 {msg.status === 'unread' && (
                   <button
@@ -640,6 +636,263 @@ function AnalyticsView() {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+// 在线用户管理
+function SessionsManager() {
+  const [sessions, setSessions] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { user: currentUser, isSuperAdmin } = useAuth();
+  const [refreshInterval, setRefreshInterval] = useState(30000);
+
+  useEffect(() => {
+    loadSessions();
+    const interval = setInterval(loadSessions, refreshInterval);
+    return () => clearInterval(interval);
+  }, [refreshInterval]);
+
+  const loadSessions = async () => {
+    try {
+      // 获取所有活跃会话
+      const { data: sessionsData } = await db.supabase
+        .from('sessions')
+        .select('*, users(name, email, role)')
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false });
+      
+      // 获取用户最后登录信息
+      const { data: usersData } = await db.supabase
+        .from('users')
+        .select('*')
+        .order('last_login', { ascending: false });
+      
+      setSessions(sessionsData || []);
+      setUsers(usersData || []);
+    } catch (err) {
+      console.error('Load sessions error:', err);
+    }
+    setLoading(false);
+  };
+
+  const handleKickUser = async (sessionId, targetUserRole) => {
+    // 权限检查
+    if (targetUserRole === 'superadmin') {
+      alert('无法强制下线超级管理员');
+      return;
+    }
+    if (!isSuperAdmin && targetUserRole === 'admin') {
+      alert('只有超级管理员可以强制下线管理员');
+      return;
+    }
+
+    if (confirm('确定要强制该用户下线吗？')) {
+      try {
+        await db.supabase.from('sessions').delete().eq('id', sessionId);
+        loadSessions();
+      } catch (err) {
+        alert('操作失败');
+      }
+    }
+  };
+
+  const handleKickAll = async () => {
+    if (!confirm('确定要强制所有用户下线吗？（不包括自己）')) return;
+    
+    try {
+      const otherSessions = sessions.filter(s => s.users?.email !== currentUser?.email);
+      for (const session of otherSessions) {
+        if (session.users?.role !== 'superadmin') {
+          await db.supabase.from('sessions').delete().eq('id', session.id);
+        }
+      }
+      loadSessions();
+    } catch (err) {
+      alert('操作失败');
+    }
+  };
+
+  // 按用户分组会话
+  const sessionsByUser = {};
+  sessions.forEach(session => {
+    const userId = session.user_id;
+    if (!sessionsByUser[userId]) {
+      sessionsByUser[userId] = { user: session.users, sessions: [] };
+    }
+    sessionsByUser[userId].sessions.push(session);
+  });
+
+  const roleLabels = {
+    superadmin: '超级管理员',
+    admin: '管理员',
+    user: '用户'
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-white">在线用户</h2>
+        <div className="flex items-center gap-4">
+          <select
+            value={refreshInterval}
+            onChange={(e) => setRefreshInterval(Number(e.target.value))}
+            className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm"
+          >
+            <option value={10000}>每10秒刷新</option>
+            <option value={30000}>每30秒刷新</option>
+            <option value={60000}>每分钟刷新</option>
+          </select>
+          <button
+            onClick={loadSessions}
+            className="px-4 py-2 rounded-lg bg-white/5 text-white/60 hover:text-white"
+          >
+            刷新
+          </button>
+          {isSuperAdmin && (
+            <button
+              onClick={handleKickAll}
+              className="px-4 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30"
+            >
+              全部下线
+            </button>
+          )}
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full" />
+        </div>
+      ) : Object.keys(sessionsByUser).length === 0 ? (
+        <div className="text-center py-12 text-white/40">
+          <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+          <p>当前无其他在线用户</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {Object.entries(sessionsByUser).map(([userId, { user, sessions }]) => (
+            <motion.div
+              key={userId}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden"
+            >
+              <div className="p-6 border-b border-white/10 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
+                    {user?.name?.charAt(0) || '?'}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-white font-medium">{user?.name || '未知用户'}</h3>
+                      {user?.email === currentUser?.email && (
+                        <span className="px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 text-xs">当前</span>
+                      )}
+                    </div>
+                    <p className="text-white/50 text-sm">{user?.email}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`px-3 py-1 rounded-full text-xs ${
+                    user?.role === 'superadmin' ? 'bg-red-500/20 text-red-400' : 
+                    user?.role === 'admin' ? 'bg-purple-500/20 text-purple-400' : 'bg-white/10 text-white/60'
+                  }`}>
+                    {roleLabels[user?.role] || user?.role}
+                  </span>
+                  <span className="px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-xs">
+                    {sessions.length} 会话
+                  </span>
+                </div>
+              </div>
+              
+              <div className="p-4 space-y-2">
+                {sessions.map((session) => (
+                  <div key={session.id} className="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                    <div className="flex items-center gap-4 text-sm text-white/60">
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-4 h-4" />
+                        登录: {new Date(session.created_at).toLocaleString('zh-CN')}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Activity className="w-4 h-4" />
+                        到期: {new Date(session.expires_at).toLocaleString('zh-CN')}
+                      </span>
+                    </div>
+                    {user?.email !== currentUser?.email && (
+                      <button
+                        onClick={() => handleKickUser(session.id, user?.role)}
+                        className="px-3 py-1 rounded-lg bg-red-500/20 text-red-400 text-sm hover:bg-red-500/30 flex items-center gap-1"
+                      >
+                        <Power className="w-4 h-4" />
+                        下线
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
+
+      {/* 登录历史 */}
+      <div className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden mt-8">
+        <div className="p-6 border-b border-white/10">
+          <h3 className="text-lg font-semibold text-white">用户登录记录</h3>
+        </div>
+        <div className="max-h-96 overflow-y-auto">
+          <table className="w-full">
+            <thead className="border-b border-white/10 sticky top-0 bg-[#12121a]">
+              <tr className="text-left text-white/60 text-sm">
+                <th className="px-6 py-3">用户</th>
+                <th className="px-6 py-3">角色</th>
+                <th className="px-6 py-3">最后登录时间</th>
+                <th className="px-6 py-3">状态</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <tr key={u.id} className="border-b border-white/5 hover:bg-white/5">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm">
+                        {u.name?.charAt(0) || '?'}
+                      </div>
+                      <div>
+                        <p className="text-white">{u.name}</p>
+                        <p className="text-white/40 text-xs">{u.email}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      u.role === 'superadmin' ? 'bg-red-500/20 text-red-400' : 
+                      u.role === 'admin' ? 'bg-purple-500/20 text-purple-400' : 'bg-white/10 text-white/60'
+                    }`}>
+                      {roleLabels[u.role] || u.role}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-white/60 text-sm">
+                    {u.last_login ? new Date(u.last_login).toLocaleString('zh-CN') : '从未登录'}
+                  </td>
+                  <td className="px-6 py-4">
+                    {sessions.some(s => s.user_id === u.id) ? (
+                      <span className="flex items-center gap-1 text-green-400 text-sm">
+                        <span className="w-2 h-2 rounded-full bg-green-400"></span>
+                        在线
+                      </span>
+                    ) : (
+                      <span className="text-white/40 text-sm">离线</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
@@ -751,33 +1004,6 @@ function SettingsView() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
-  const handleChangePassword = async (e) => {
-    e.preventDefault();
-    if (passwords.new !== passwords.confirm) {
-      setMessage('两次输入的密码不一致');
-      return;
-    }
-    if (passwords.new.length < 6) {
-      setMessage('密码长度至少6位');
-      return;
-    }
-    
-    setSaving(true);
-    setMessage('');
-    
-    try {
-      const { supabase } = await import('../lib/supabase');
-      const { data, error } = await supabase.auth.updateUser({ password: passwords.new });
-      if (error) throw error;
-      setMessage('密码修改成功');
-      setPasswords({ old: '', new: '', confirm: '' });
-    } catch (err) {
-      setMessage(err.message || '修改失败');
-    }
-    
-    setSaving(false);
-  };
-
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-white">系统设置</h2>
@@ -789,44 +1015,6 @@ function SettingsView() {
           <p className="text-white/60">邮箱：<span className="text-white">{user?.email}</span></p>
           <p className="text-white/60">角色：<span className="text-white capitalize">{user?.role === 'superadmin' ? '超级管理员' : user?.role === 'admin' ? '管理员' : '用户'}</span></p>
         </div>
-      </div>
-
-      <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-        <h3 className="text-lg font-semibold text-white mb-4">修改密码</h3>
-        <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
-          {message && (
-            <div className={`p-3 rounded-lg ${message.includes('成功') ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'} text-sm`}>
-              {message}
-            </div>
-          )}
-          <div>
-            <label className="block text-white/60 text-sm mb-2">新密码</label>
-            <input
-              type="password"
-              value={passwords.new}
-              onChange={(e) => setPasswords({ ...passwords, new: e.target.value })}
-              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-white/60 text-sm mb-2">确认新密码</label>
-            <input
-              type="password"
-              value={passwords.confirm}
-              onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })}
-              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white"
-              required
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-6 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white"
-          >
-            {saving ? '修改中...' : '修改密码'}
-          </button>
-        </form>
       </div>
     </div>
   );

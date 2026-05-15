@@ -6,14 +6,32 @@ const Navigation = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('');
+  const [enabledModuleIds, setEnabledModuleIds] = useState(null);
 
-  const navItems = [
+  const allNavItems = [
     { name: '首页', id: 'home' },
     { name: '关于', id: 'about' },
     { name: '作品', id: 'portfolio' },
     { name: '博客', id: 'blog' },
     { name: '资讯', id: 'news' },
   ];
+
+  // 从 localStorage 读取模块配置，动态过滤导航项
+  useEffect(() => {
+    const saved = localStorage.getItem('wuyinqingshan_modules');
+    if (saved) {
+      try {
+        const modules = JSON.parse(saved);
+        const enabledIds = modules.filter(m => m.enabled).map(m => m.id);
+        setEnabledModuleIds(enabledIds);
+      } catch {}
+    }
+  }, []);
+
+  // 根据模块配置过滤导航项（首页始终显示）
+  const navItems = enabledModuleIds
+    ? allNavItems.filter(item => item.id === 'home' || enabledModuleIds.includes(item.id))
+    : allNavItems;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -101,6 +119,7 @@ const Navigation = () => {
             </div>
 
             {/* CTA Button */}
+            {(!enabledModuleIds || enabledModuleIds.includes('contact')) && (
             <div className="hidden md:block">
               <motion.a
                 href="#contact"
@@ -115,6 +134,7 @@ const Navigation = () => {
                 联系我
               </motion.a>
             </div>
+            )}
 
             {/* Mobile Menu Button */}
             <motion.button
@@ -178,6 +198,7 @@ const Navigation = () => {
                 ))}
               </div>
 
+              {(!enabledModuleIds || enabledModuleIds.includes('contact')) && (
               <div className="mt-6 pt-6 border-t border-white/10">
                 <motion.a
                   href="#contact"
@@ -188,6 +209,7 @@ const Navigation = () => {
                   联系我
                 </motion.a>
               </div>
+              )}
             </motion.div>
           </motion.div>
         )}

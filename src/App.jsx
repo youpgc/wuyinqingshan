@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, HashRouter, useLocation } from 'react-router-dom';
 import './styles/animations.css';
 import ParticleBackground from './components/ParticleBackground';
@@ -69,6 +69,19 @@ function ScrollToAnchor() {
 
 // 前台主页
 function Home() {
+  const [modules, setModules] = useState(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('wuyinqingshan_modules');
+    if (saved) {
+      try { setModules(JSON.parse(saved)); } catch {}
+    }
+  }, []);
+
+  const enabledModules = modules
+    ? modules.filter(m => m.enabled).sort((a, b) => a.order - b.order)
+    : null;
+
   return (
     <div className="relative min-h-screen bg-[#0a0a0f] text-white overflow-x-hidden">
       <AnalyticsTracker />
@@ -76,11 +89,24 @@ function Home() {
       <Navigation />
       <main className="relative z-10">
         <section id="home"><Hero /></section>
-        <About />
-        <Portfolio />
-        <Blog />
-        <News />
-        <Contact />
+        {enabledModules ? enabledModules.map(mod => {
+          switch(mod.id) {
+            case 'about': return <About key="about" />;
+            case 'portfolio': return <Portfolio key="portfolio" showCount={mod.showCount} />;
+            case 'blog': return <Blog key="blog" showCount={mod.showCount} />;
+            case 'news': return <News key="news" showCount={mod.showCount} />;
+            case 'contact': return <Contact key="contact" />;
+            default: return null;
+          }
+        }) : (
+          <>
+            <About />
+            <Portfolio />
+            <Blog />
+            <News />
+            <Contact />
+          </>
+        )}
       </main>
       <Footer />
       <ScrollToTop />

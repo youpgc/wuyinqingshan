@@ -372,10 +372,20 @@ function DashboardOverview() {
 
 // 文章管理
 function PostsManager() {
-  const [posts, setPosts] = useState([]);
+  const [allPosts, setAllPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showEditor, setShowEditor] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterCategory, setFilterCategory] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+
+  const filteredPosts = allPosts.filter(post => {
+    const matchSearch = !searchTerm || post.title.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchCategory = filterCategory === 'all' || post.category === filterCategory;
+    const matchStatus = filterStatus === 'all' || post.status === filterStatus;
+    return matchSearch && matchCategory && matchStatus;
+  });
 
   useEffect(() => {
     loadPosts();
@@ -384,7 +394,7 @@ function PostsManager() {
   const loadPosts = async () => {
     try {
       const data = await db.posts.getAll();
-      setPosts(data);
+      setAllPosts(data);
     } catch (err) {
       console.error('Load posts error:', err);
     }
@@ -430,15 +440,52 @@ function PostsManager() {
           新建文章
         </button>
       </div>
+
+      {/* 筛选表单 */}
+      <div className="flex flex-wrap items-center gap-4 mb-4">
+        <input
+          placeholder="搜索标题..."
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm w-48"
+        />
+        <select
+          value={filterCategory}
+          onChange={e => setFilterCategory(e.target.value)}
+          className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm"
+        >
+          <option value="all">全部分类</option>
+          <option value="前端趋势">前端趋势</option>
+          <option value="TypeScript">TypeScript</option>
+          <option value="AI编程">AI编程</option>
+          <option value="CSS">CSS</option>
+          <option value="工程化">工程化</option>
+        </select>
+        <select
+          value={filterStatus}
+          onChange={e => setFilterStatus(e.target.value)}
+          className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm"
+        >
+          <option value="all">全部状态</option>
+          <option value="published">已发布</option>
+          <option value="draft">草稿</option>
+        </select>
+        <button
+          onClick={() => { setSearchTerm(''); setFilterCategory('all'); setFilterStatus('all'); }}
+          className="px-4 py-2 rounded-lg bg-white/5 text-white/60 text-sm hover:text-white hover:bg-white/10 transition-colors"
+        >
+          重置
+        </button>
+      </div>
       
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <div className="animate-spin w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full" />
         </div>
-      ) : posts.length === 0 ? (
+      ) : filteredPosts.length === 0 ? (
         <div className="text-center py-12 text-white/40">
           <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p>暂无文章</p>
+          <p>{allPosts.length === 0 ? '暂无文章' : '没有匹配的文章'}</p>
         </div>
       ) : (
         <div className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden">
@@ -454,7 +501,7 @@ function PostsManager() {
               </tr>
             </thead>
             <tbody>
-              {posts.map((post) => (
+              {filteredPosts.map((post) => (
                 <tr key={post.id} className="border-b border-white/5 hover:bg-white/5">
                   <td className="px-6 py-4 text-white">{post.title}</td>
                   <td className="px-6 py-4 text-white/60">{post.category || '-'}</td>
@@ -1442,10 +1489,18 @@ function SettingsView() {
 
 // 资讯管理
 function NewsManager() {
-  const [news, setNews] = useState([]);
+  const [allNews, setAllNews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showEditor, setShowEditor] = useState(false);
   const [editingNews, setEditingNews] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterCategory, setFilterCategory] = useState('all');
+
+  const filteredNews = allNews.filter(item => {
+    const matchSearch = !searchTerm || item.title.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchCategory = filterCategory === 'all' || item.category === filterCategory;
+    return matchSearch && matchCategory;
+  });
 
   useEffect(() => {
     loadNews();
@@ -1459,7 +1514,7 @@ function NewsManager() {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      setNews(data || []);
+      setAllNews(data || []);
     } catch (err) {
       console.error('Load news error:', err);
     }
@@ -1494,15 +1549,43 @@ function NewsManager() {
           新建资讯
         </button>
       </div>
+
+      {/* 筛选表单 */}
+      <div className="flex flex-wrap items-center gap-4 mb-4">
+        <input
+          placeholder="搜索标题..."
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm w-48"
+        />
+        <select
+          value={filterCategory}
+          onChange={e => setFilterCategory(e.target.value)}
+          className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm"
+        >
+          <option value="all">全部分类</option>
+          <option value="前端趋势">前端趋势</option>
+          <option value="AI编程">AI编程</option>
+          <option value="工程化">工程化</option>
+          <option value="技术动态">技术动态</option>
+          <option value="产品发布">产品发布</option>
+        </select>
+        <button
+          onClick={() => { setSearchTerm(''); setFilterCategory('all'); }}
+          className="px-4 py-2 rounded-lg bg-white/5 text-white/60 text-sm hover:text-white hover:bg-white/10 transition-colors"
+        >
+          重置
+        </button>
+      </div>
       
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <div className="animate-spin w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full" />
         </div>
-      ) : news.length === 0 ? (
+      ) : filteredNews.length === 0 ? (
         <div className="text-center py-12 text-white/40">
           <Newspaper className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p>暂无资讯</p>
+          <p>{allNews.length === 0 ? '暂无资讯' : '没有匹配的资讯'}</p>
         </div>
       ) : (
         <div className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden">
@@ -1518,7 +1601,7 @@ function NewsManager() {
               </tr>
             </thead>
             <tbody>
-              {news.map((item) => (
+              {filteredNews.map((item) => (
                 <tr key={item.id} className="border-b border-white/5 hover:bg-white/5">
                   <td className="px-6 py-4 text-white max-w-xs truncate">{item.title}</td>
                   <td className="px-6 py-4 text-white/60">{item.category || '-'}</td>

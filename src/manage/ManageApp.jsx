@@ -1023,14 +1023,166 @@ function UsersManager() {
 // 系统设置
 function SettingsView() {
   const { user } = useAuth();
-  const [passwords, setPasswords] = useState({ old: '', new: '', confirm: '' });
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
+  const [cleaning, setCleaning] = useState(false);
+  const [cleanResult, setCleanResult] = useState(null);
+
+  // 模块配置状态
+  const [modules, setModules] = useState([
+    { id: 'hero', name: 'Hero 横幅', enabled: true, order: 1, showCount: 1 },
+    { id: 'about', name: '关于我', enabled: true, order: 2, showCount: 1 },
+    { id: 'portfolio', name: '精选作品', enabled: true, order: 3, showCount: 6 },
+    { id: 'blog', name: '技术博客', enabled: true, order: 4, showCount: 6 },
+    { id: 'news', name: '每日资讯', enabled: true, order: 5, showCount: 6 },
+    { id: 'contact', name: '联系我', enabled: true, order: 6, showCount: 1 },
+  ]);
+  const [savingModules, setSavingModules] = useState(false);
+
+  // 数据清理
+  const cleanData = async () => {
+    if (!confirm('确定要执行数据清理吗？\n\n将执行以下操作：\n1. 删除重复标题的文章\n2. 删除内容为空的文章\n3. 删除重复标题的资讯\n4. 删除内容为空的资讯')) return;
+
+    setCleaning(true);
+    setCleanResult(null);
+    
+    try {
+      let deletedPosts = 0;
+      let deletedNews = 0;
+
+      // 清理文章 - 删除重复标题
+      const { data: allPosts } = await db.supabase
+        .from('posts')
+        .select('id, title, content');
+      
+      if (allPosts && allPosts.length > 0) {
+        const seen = new Set();
+        const toDelete = [];
+        
+        allPosts.forEach(post => {
+          // 检查重复标题
+          const titleKey = post.title?.trim().toLowerCase();
+          if (titleKey && seen.has(titleKey)) {
+            toDelete.push(post.id);
+          } else if (titleKey) {
+            seen.add(titleKey);
+          }
+          
+          // 检查内容为空
+          if (!post.content || post.content.trim().length < 10) {
+            if (!toDelete.includes(post.id)) {
+              toDelete.push(post.id);
+            }
+          }
+        });
+
+        if (toDelete.length > 0) {
+          // 分批删除（每次最多100条）
+          for (let i = 0; i < toDelete.length; i += 100) {
+            const batch = toDelete.slice(i, i + 100);
+            await db.supabase.from('posts').delete().in('id', batch);
+          }
+          deletedPosts = toDelete.length;
+        }
+      }
+
+      // 清理资讯 - 删除重复标题
+      const { data: allNews } = await db.supabase
+        .from('news')
+        .select('id, title, content');
+      
+      if (allNews && allNews.length > 0) {
+        const seen = new Set();
+        const toDelete = [];
+        
+        allNews.forEach(item => {
+          const titleKey = item.title?.trim().toLowerCase();
+          if (titleKey && seen.has(titleKey)) {
+            toDelete.push(item.id);
+          } else if (titleKey) {
+            seen.add(titleKey);
+          }
+        });
+
+        if (toDelete.length > 0) {
+          for (let i = 0; i < toDelete.length; i += 100) {
+            const batch = toDelete.slice(i, i + 100);
+            await db.supabase.from('news').delete().in('id', batch);
+          }
+          deletedNews = toDelete.length;
+        }
+      }
+
+      setCleanResult({
+        success: true,
+        deletedPosts,
+        deletedNews,
+        message: `清理完成：删除 ${deletedPosts} 篇重复/空文章，${deletedNews} 条重复资讯`,
+      });
+    } catch (err) {
+      setCleanResult({
+        success: false,
+        message: `清理失败：${err.message}`,
+      });
+    }
+    
+    setCleaning(false);
+  };
+
+  // 保存模块配置
+  const saveModules = async () => {
+    setSavingModules(true);
+    try {
+      // 保存到 localStorage（后续可迁移到数据库）
+      localStorage.setItem('wuyinqingshan_modules', JSON.stringify(modules));
+      
+      // 尝试保存到数据库
+      try {
+        await db.supabase.from('site_config').upsert({
+          key: 'modules',
+          value: JSON.stringify(modules),
+        }, { onConflict: 'key' });
+      } catch (e) {
+        // 如果表不存在，忽略
+      }
+      
+      alert('模块配置已保存');
+    } catch (err) {
+      alert('保存失败');
+    }
+    setSavingModules(false);
+  };
+
+  // 切换模块启用/禁用
+  const toggleModule = (id) => {
+    setModules(prev => prev.map(m => 
+      m.id === id ? { ...m, enabled: !m.enabled } : m
+    ));
+  };
+
+  // 更新模块配置
+  const updateModule = (id, field, value) => {
+    setModules(prev => prev.map(m => 
+      m.id === id ? { ...m, [field]: value } : m
+    ));
+  };
+
+  // 上移/下移模块顺序
+  const moveModule = (id, direction) => {
+    setModules(prev => {
+      const idx = prev.findIndex(m => m.id === id);
+      if (idx < 0) return prev;
+      const newIdx = idx + direction;
+      if (newIdx < 0 || newIdx >= prev.length) return prev;
+      const newModules = [...prev];
+      [newModules[idx], newModules[newIdx]] = [newModules[newIdx], newModules[idx]];
+      return newModules.map((m, i) => ({ ...m, order: i + 1 }));
+    });
+  };
 
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-white">系统设置</h2>
       
+      {/* 当前账号 */}
       <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
         <h3 className="text-lg font-semibold text-white mb-4">当前账号</h3>
         <div className="space-y-2">
@@ -1038,6 +1190,110 @@ function SettingsView() {
           <p className="text-white/60">邮箱：<span className="text-white">{user?.email}</span></p>
           <p className="text-white/60">角色：<span className="text-white capitalize">{user?.role === 'superadmin' ? '超级管理员' : user?.role === 'admin' ? '管理员' : '用户'}</span></p>
         </div>
+      </div>
+
+      {/* 模块配置 */}
+      <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold text-white">模块配置</h3>
+          <button
+            onClick={saveModules}
+            disabled={savingModules}
+            className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm disabled:opacity-50"
+          >
+            {savingModules ? '保存中...' : '保存配置'}
+          </button>
+        </div>
+        
+        <p className="text-white/40 text-sm mb-4">
+          配置前台首页各模块的显示顺序、启用状态和展示条数
+        </p>
+
+        <div className="space-y-3">
+          {modules.map((mod) => (
+            <div
+              key={mod.id}
+              className={`flex items-center gap-4 p-4 rounded-xl border transition-colors ${
+                mod.enabled ? 'border-white/10 bg-white/5' : 'border-white/5 bg-white/[0.02] opacity-60'
+              }`}
+            >
+              {/* 启用开关 */}
+              <button
+                onClick={() => toggleModule(mod.id)}
+                className={`w-12 h-6 rounded-full transition-colors relative ${
+                  mod.enabled ? 'bg-purple-500' : 'bg-white/20'
+                }`}
+              >
+                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                  mod.enabled ? 'left-7' : 'left-1'
+                }`} />
+              </button>
+
+              {/* 模块名称 */}
+              <div className="flex-1">
+                <span className="text-white font-medium">{mod.name}</span>
+                <span className="text-white/40 text-sm ml-2">#{mod.order}</span>
+              </div>
+
+              {/* 展示条数 */}
+              <div className="flex items-center gap-2">
+                <span className="text-white/40 text-sm">条数:</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="20"
+                  value={mod.showCount}
+                  onChange={(e) => updateModule(mod.id, 'showCount', Number(e.target.value))}
+                  className="w-16 px-2 py-1 rounded bg-white/5 border border-white/10 text-white text-sm text-center"
+                />
+              </div>
+
+              {/* 上移/下移 */}
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => moveModule(mod.id, -1)}
+                  disabled={mod.order === 1}
+                  className="p-1 rounded text-white/40 hover:text-white disabled:opacity-30"
+                >
+                  ↑
+                </button>
+                <button
+                  onClick={() => moveModule(mod.id, 1)}
+                  disabled={mod.order === modules.length}
+                  className="p-1 rounded text-white/40 hover:text-white disabled:opacity-30"
+                >
+                  ↓
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 数据清理 */}
+      <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+        <h3 className="text-lg font-semibold text-white mb-4">数据清理</h3>
+        <p className="text-white/40 text-sm mb-4">
+          清理重复数据和空内容，优化数据库存储
+        </p>
+        
+        <button
+          onClick={cleanData}
+          disabled={cleaning}
+          className="px-4 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors text-sm disabled:opacity-50"
+        >
+          {cleaning ? '清理中...' : '执行数据清理'}
+        </button>
+
+        {cleanResult && (
+          <div className={`mt-4 p-4 rounded-lg ${
+            cleanResult.success ? 'bg-green-500/10 border border-green-500/20' : 'bg-red-500/10 border border-red-500/20'
+          }`}>
+            <p className={cleanResult.success ? 'text-green-400' : 'text-red-400'}>
+              {cleanResult.message}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1115,7 +1371,7 @@ function NewsManager() {
                 <th className="px-6 py-4">标题</th>
                 <th className="px-6 py-4">分类</th>
                 <th className="px-6 py-4">来源</th>
-                <th className="px-6 py-4">热度</th>
+                <th className="px-6 py-4">浏览量</th>
                 <th className="px-6 py-4">创建时间</th>
                 <th className="px-6 py-4">操作</th>
               </tr>
@@ -1127,10 +1383,8 @@ function NewsManager() {
                   <td className="px-6 py-4 text-white/60">{item.category || '-'}</td>
                   <td className="px-6 py-4 text-white/60">{item.source || '-'}</td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      item.hot > 80 ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-white/60'
-                    }`}>
-                      {item.hot || 0}
+                    <span className="px-2 py-1 rounded-full text-xs bg-white/10 text-white/60">
+                      {item.views || 0}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-white/60 text-sm">
@@ -1170,7 +1424,6 @@ function NewsEditor({ news, onClose, onSave }) {
     title: news?.title || '',
     source: news?.source || '',
     category: news?.category || '技术动态',
-    hot: news?.hot || 50,
     url: news?.url || ''
   });
   const [saving, setSaving] = useState(false);
@@ -1245,17 +1498,6 @@ function NewsEditor({ news, onClose, onSave }) {
               onChange={(e) => setFormData({ ...formData, url: e.target.value })}
               className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white"
               placeholder="https://"
-            />
-          </div>
-          <div>
-            <label className="block text-white/60 text-sm mb-2">热度值 (0-100)</label>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              value={formData.hot}
-              onChange={(e) => setFormData({ ...formData, hot: Number(e.target.value) })}
-              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white"
             />
           </div>
           <div className="flex justify-end gap-4 pt-4">

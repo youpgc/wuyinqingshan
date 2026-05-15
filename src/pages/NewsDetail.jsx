@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Share2, Bookmark, ExternalLink, TrendingUp, Calendar } from 'lucide-react';
+import { ArrowLeft, Share2, Bookmark, ExternalLink, Calendar } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import ParticleBackground from '../components/ParticleBackground';
 import Navigation from '../components/Navigation';
@@ -34,7 +34,9 @@ export default function NewsDetail() {
         return;
       }
       
-      setNews(newsData);
+      // 增加浏览次数
+      await supabase.from('news').update({ views: (newsData.views || 0) + 1 }).eq('id', newsId);
+      setNews({ ...newsData, views: (newsData.views || 0) + 1 });
     } catch (err) {
       setError('加载失败');
     }
@@ -103,17 +105,11 @@ export default function NewsDetail() {
             animate={{ opacity: 1, y: 0 }}
             className="mb-12"
           >
-            {/* 分类和热度 */}
+            {/* 分类 */}
             <div className="flex flex-wrap items-center gap-2 mb-4">
               <span className="inline-block px-3 py-1 text-sm font-medium rounded-full bg-purple-500/20 text-purple-400">
                 {news.category || '技术动态'}
               </span>
-              {news.hot > 80 && (
-                <span className="flex items-center gap-1 px-3 py-1 text-sm font-medium rounded-full bg-red-500/20 text-red-400">
-                  <TrendingUp className="w-4 h-4" />
-                  热门
-                </span>
-              )}
             </div>
 
             {/* 标题 */}
@@ -131,8 +127,7 @@ export default function NewsDetail() {
                 {formatTime(news.created_at)}
               </span>
               <span className="flex items-center gap-2">
-                <TrendingUp className="w-4 h-4" />
-                热度: {news.hot || 0}
+                浏览: {news.views || 0}
               </span>
             </div>
           </motion.header>

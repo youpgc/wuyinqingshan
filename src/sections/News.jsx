@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Newspaper, TrendingUp, ExternalLink, RefreshCw, ArrowRight } from 'lucide-react';
+import { Newspaper, ExternalLink, RefreshCw, ArrowRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ScrollReveal from '../components/ScrollReveal';
@@ -34,7 +34,7 @@ const News = () => {
       const { data, error } = await supabase
         .from('news')
         .select('*')
-        .order('hot', { ascending: false });
+        .order('views', { ascending: false });
       
       if (error) throw error;
       setNews(data || []);
@@ -156,16 +156,13 @@ const News = () => {
                               <h4 className="text-white font-medium line-clamp-1 group-hover:text-purple-400 transition-colors">
                                 {item.title}
                               </h4>
-                              {item.hot > 80 && (
-                                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 text-xs">
-                                  <TrendingUp className="w-3 h-3" />热
-                                </span>
-                              )}
                             </div>
                             <div className="flex items-center gap-3 text-sm text-white/50">
                               <span>{item.source || '未知来源'}</span>
                               <span>·</span>
                               <span>{formatTime(item.created_at)}</span>
+                              <span>·</span>
+                              <span>浏览: {item.views || 0}</span>
                             </div>
                           </div>
                           {item.url && <ExternalLink className="w-4 h-4 text-white/30 group-hover:text-purple-400 transition-colors flex-shrink-0" />}

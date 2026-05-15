@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Newspaper, ChevronLeft, ChevronRight, TrendingUp, RefreshCw, ExternalLink } from 'lucide-react';
+import { Newspaper, ChevronLeft, ChevronRight, RefreshCw, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ScrollReveal from '../components/ScrollReveal';
 import GlassCard from '../components/GlassCard';
@@ -39,8 +39,8 @@ const NewsList = () => {
 
       const { data, error } = await supabase
         .from('news')
-        .select('id, title, source, category, url, hot, created_at')
-        .order('hot', { ascending: false })
+        .select('id, title, source, category, url, views, created_at')
+        .order('views', { ascending: false })
         .range(from, to);
       
       if (error) throw error;
@@ -110,12 +110,6 @@ const NewsList = () => {
                             <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-500/20 text-purple-400">
                               {item.category || '技术动态'}
                             </span>
-                            {item.hot > 80 && (
-                              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 text-xs">
-                                <TrendingUp className="w-3 h-3" />
-                                热
-                              </span>
-                            )}
                           </div>
                           <motion.h3 
                             onClick={() => navigate(`/news/${item.id}`)}
@@ -128,6 +122,8 @@ const NewsList = () => {
                             <span>{item.source || '未知来源'}</span>
                             <span>·</span>
                             <span>{formatTime(item.created_at)}</span>
+                            <span>·</span>
+                            <span>浏览: {item.views || 0}</span>
                             {item.url && (
                               <>
                                 <span>·</span>

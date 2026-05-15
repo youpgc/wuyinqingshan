@@ -20,8 +20,10 @@ import NewsDetail from './pages/NewsDetail';
 import ScrollToTop from './components/ScrollToTop';
 import { supabase } from './lib/supabase';
 
-// 访问统计追踪组件
+// 访问统计追踪组件 - 使用新的 visit_logs 表
 function AnalyticsTracker() {
+  const location = useLocation();
+  
   useEffect(() => {
     const recordVisit = async () => {
       try {
@@ -29,9 +31,39 @@ function AnalyticsTracker() {
           'visitor_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
         localStorage.setItem('wuyinqingshan_visitor_id', visitorId);
         
+        // 获取当前路径
+        const path = location.pathname || '/';
+        
+        // 判断访问类型
+        let visitType = 'platform';
+        let resourceId = null;
+        let resourceType = null;
+        
+        // 资源详情访问
+        if (path.startsWith('/post/')) {
+          visitType = 'resource';
+          resourceType = 'post';
+          resourceId = path.split('/')[2];
+        } else if (path.startsWith('/news/')) {
+          visitType = 'resource';
+          resourceType = 'news';
+          resourceId = path.split('/')[2];
+        }
+        
+        // 记录到新的 visit_logs 表
+        await supabase.from('visit_logs').insert({
+          visitor_id: visitorId,
+          visit_type: visitType,
+          page_path: path,
+          resource_id: resourceId,
+          resource_type: resourceType,
+          created_at: new Date().toISOString()
+        });
+        
+        // 兼容旧表（可选）
         await supabase.from('visits').insert({
           visitor_id: visitorId,
-          page: 'home'
+          page: path.replace('/', '') || 'home'
         });
       } catch (err) {
         console.error('Visit record error:', err);
@@ -39,7 +71,7 @@ function AnalyticsTracker() {
     };
     
     recordVisit();
-  }, []);
+  }, [location]);
   
   return null;
 }

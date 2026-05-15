@@ -141,19 +141,33 @@ function DashboardOverview() {
 
   const loadData = async () => {
     try {
-      // 加载访问统计
+      // 加载访问统计 - 使用新的 visit_logs 表
       const { count: totalVisits } = await supabase
-        .from('visits')
+        .from('visit_logs')
         .select('*', { count: 'exact', head: true });
       
+      // 平台访问统计
+      const { count: platformVisits } = await supabase
+        .from('visit_logs')
+        .select('*', { count: 'exact', head: true })
+        .eq('visit_type', 'platform');
+      
+      // 资源访问统计
+      const { count: resourceVisits } = await supabase
+        .from('visit_logs')
+        .select('*', { count: 'exact', head: true })
+        .eq('visit_type', 'resource');
+      
       const { data: visitsData } = await supabase
-        .from('visits')
-        .select('visitor_id, created_at')
+        .from('visit_logs')
+        .select('visitor_id, created_at, visit_type')
         .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
       
       const uniqueVisitors = new Set(visitsData?.map(v => v.visitor_id) || []).size;
       const todayStart = new Date().toISOString().split('T')[0];
       const todayVisits = visitsData?.filter(v => v.created_at.startsWith(todayStart)).length || 0;
+      const todayPlatformVisits = visitsData?.filter(v => v.created_at.startsWith(todayStart) && v.visit_type === 'platform').length || 0;
+      const todayResourceVisits = visitsData?.filter(v => v.created_at.startsWith(todayStart) && v.visit_type === 'resource').length || 0;
 
       // 加载文章统计
       const { count: totalPosts } = await supabase
@@ -176,8 +190,12 @@ function DashboardOverview() {
 
       setStats({
         totalVisits: totalVisits || 0,
+        platformVisits: platformVisits || 0,
+        resourceVisits: resourceVisits || 0,
         uniqueVisitors: uniqueVisitors,
         todayVisits: todayVisits,
+        todayPlatformVisits: todayPlatformVisits || 0,
+        todayResourceVisits: todayResourceVisits || 0,
         totalPosts: totalPosts || 0,
         totalNews: totalNews || 0,
         totalMessages: totalMessages || 0,
@@ -217,8 +235,11 @@ function DashboardOverview() {
 
   const statCards = [
     { title: '总访问量', value: stats.totalVisits, icon: Eye, color: 'from-blue-500 to-cyan-500', bgColor: 'bg-blue-500/10' },
+    { title: '平台访问', value: stats.platformVisits || 0, icon: LayoutDashboard, color: 'from-teal-500 to-cyan-500', bgColor: 'bg-teal-500/10' },
+    { title: '资源访问', value: stats.resourceVisits || 0, icon: FileText, color: 'from-amber-500 to-orange-500', bgColor: 'bg-amber-500/10' },
     { title: '独立访客', value: stats.uniqueVisitors, icon: Users, color: 'from-green-500 to-emerald-500', bgColor: 'bg-green-500/10' },
-    { title: '今日访问', value: stats.todayVisits, icon: TrendingUp, color: 'from-purple-500 to-pink-500', bgColor: 'bg-purple-500/10' },
+    { title: '今日平台', value: stats.todayPlatformVisits || 0, icon: TrendingUp, color: 'from-purple-500 to-pink-500', bgColor: 'bg-purple-500/10' },
+    { title: '今日资源', value: stats.todayResourceVisits || 0, icon: Newspaper, color: 'from-rose-500 to-pink-500', bgColor: 'bg-rose-500/10' },
     { title: '文章总数', value: stats.totalPosts, icon: FileText, color: 'from-orange-500 to-yellow-500', bgColor: 'bg-orange-500/10' },
     { title: '已发布', value: stats.publishedPosts, icon: CheckCircle, color: 'from-green-500 to-teal-500', bgColor: 'bg-green-500/10' },
     { title: '草稿', value: stats.draftPosts, icon: FileWarning, color: 'from-gray-500 to-slate-500', bgColor: 'bg-gray-500/10' },

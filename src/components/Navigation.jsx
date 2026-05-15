@@ -9,28 +9,38 @@ const Navigation = () => {
   const [enabledModuleIds, setEnabledModuleIds] = useState(null);
 
   const allNavItems = [
-    { name: '首页', id: 'home' },
-    { name: '关于', id: 'about' },
-    { name: '作品', id: 'portfolio' },
-    { name: '博客', id: 'blog' },
-    { name: '资讯', id: 'news' },
+    { name: '首页', id: 'home', order: 0 },
+    { name: '关于', id: 'about', order: 1 },
+    { name: '作品', id: 'portfolio', order: 2 },
+    { name: '博客', id: 'blog', order: 3 },
+    { name: '资讯', id: 'news', order: 4 },
   ];
 
-  // 从 localStorage 读取模块配置，动态过滤导航项
+  // 从 localStorage 读取模块配置，动态过滤和排序导航项
   useEffect(() => {
     const saved = localStorage.getItem('wuyinqingshan_modules');
     if (saved) {
       try {
         const modules = JSON.parse(saved);
-        const enabledIds = modules.filter(m => m.enabled).map(m => m.id);
+        // 按配置中的 order 排序并获取启用的 ID
+        const sortedModules = modules.filter(m => m.enabled).sort((a, b) => a.order - b.order);
+        const enabledIds = sortedModules.map(m => m.id);
         setEnabledModuleIds(enabledIds);
       } catch {}
     }
   }, []);
 
-  // 根据模块配置过滤导航项（首页始终显示）
+  // 根据模块配置过滤和排序导航项（首页始终显示在最前面）
   const navItems = enabledModuleIds
-    ? allNavItems.filter(item => item.id === 'home' || enabledModuleIds.includes(item.id))
+    ? allNavItems
+        .filter(item => item.id === 'home' || enabledModuleIds.includes(item.id))
+        .sort((a, b) => {
+          if (a.id === 'home') return -1;
+          if (b.id === 'home') return 1;
+          const aIndex = enabledModuleIds.indexOf(a.id);
+          const bIndex = enabledModuleIds.indexOf(b.id);
+          return aIndex - bIndex;
+        })
     : allNavItems;
 
   useEffect(() => {

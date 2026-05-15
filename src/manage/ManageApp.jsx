@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   LayoutDashboard, FileText, MessageSquare, BarChart3, 
@@ -118,6 +119,7 @@ export default function ManageApp() {
 
 // 数据概览
 function DashboardOverview() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalVisits: 0,
     uniqueVisitors: 0,
@@ -133,6 +135,7 @@ function DashboardOverview() {
     news: [],
     messages: []
   });
+  const [visitsData, setVisitsData] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -158,16 +161,19 @@ function DashboardOverview() {
         .select('*', { count: 'exact', head: true })
         .eq('visit_type', 'resource');
       
-      const { data: visitsData } = await supabase
+      const { data: rawVisits } = await supabase
         .from('visit_logs')
         .select('visitor_id, created_at, visit_type')
         .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
       
-      const uniqueVisitors = new Set(visitsData?.map(v => v.visitor_id) || []).size;
+      const uniqueVisitors = new Set(rawVisits?.map(v => v.visitor_id) || []).size;
       const todayStart = new Date().toISOString().split('T')[0];
-      const todayVisits = visitsData?.filter(v => v.created_at.startsWith(todayStart)).length || 0;
-      const todayPlatformVisits = visitsData?.filter(v => v.created_at.startsWith(todayStart) && v.visit_type === 'platform').length || 0;
-      const todayResourceVisits = visitsData?.filter(v => v.created_at.startsWith(todayStart) && v.visit_type === 'resource').length || 0;
+      const todayVisits = rawVisits?.filter(v => v.created_at.startsWith(todayStart)).length || 0;
+      const todayPlatformVisits = rawVisits?.filter(v => v.created_at.startsWith(todayStart) && v.visit_type === 'platform').length || 0;
+      const todayResourceVisits = rawVisits?.filter(v => v.created_at.startsWith(todayStart) && v.visit_type === 'resource').length || 0;
+      
+      // 保存访问数据用于图表
+      setVisitsData(rawVisits || []);
 
       // 加载文章统计
       const { count: totalPosts } = await supabase
@@ -277,8 +283,8 @@ function DashboardOverview() {
             ))}
           </div>
           
-          {/* 访问趋势图表 */}
-          <VisitChart data={[]} title="访问趋势" />
+          {/* 访问趋势图表 - 传递真实的访问数据 */}
+          <VisitChart data={visitsData || []} title="访问趋势" />
           
           {/* 数据分布 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -296,7 +302,11 @@ function DashboardOverview() {
               ) : (
                 <div className="space-y-3">
                   {recentData.posts.map((post) => (
-                    <div key={post.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 transition-colors">
+                    <div 
+                      key={post.id} 
+                      className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+                      onClick={() => navigate(`/post/${post.id}`)}
+                    >
                       <div className="flex-1 min-w-0">
                         <p className="text-white text-sm truncate">{post.title}</p>
                         <p className="text-white/40 text-xs mt-1">
@@ -336,7 +346,11 @@ function DashboardOverview() {
               ) : (
                 <div className="space-y-3">
                   {recentData.news.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 transition-colors">
+                    <div 
+                      key={item.id} 
+                      className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+                      onClick={() => navigate(`/news/${item.id}`)}
+                    >
                       <div className="flex-1 min-w-0">
                         <p className="text-white text-sm truncate">{item.title}</p>
                         <p className="text-white/40 text-xs mt-1">

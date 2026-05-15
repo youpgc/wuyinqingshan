@@ -7,7 +7,7 @@ import {
   Shield, UserPlus, Clock, Activity, ChevronRight, Power, Newspaper
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { db } from '../lib/supabase';
+import { db, supabase } from '../lib/supabase';
 
 export default function ManageApp() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -680,14 +680,14 @@ function SessionsManager() {
   const loadSessions = async () => {
     try {
       // 获取所有活跃会话
-      const { data: sessionsData } = await db.supabase
+      const { data: sessionsData } = await supabase
         .from('sessions')
         .select('*, users(name, email, role)')
         .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false });
       
       // 获取用户最后登录信息
-      const { data: usersData } = await db.supabase
+      const { data: usersData } = await supabase
         .from('users')
         .select('*')
         .order('last_login', { ascending: false });
@@ -713,7 +713,7 @@ function SessionsManager() {
 
     if (confirm('确定要强制该用户下线吗？')) {
       try {
-        await db.supabase.from('sessions').delete().eq('id', sessionId);
+        await supabase.from('sessions').delete().eq('id', sessionId);
         loadSessions();
       } catch (err) {
         alert('操作失败');
@@ -728,7 +728,7 @@ function SessionsManager() {
       const otherSessions = sessions.filter(s => s.users?.email !== currentUser?.email);
       for (const session of otherSessions) {
         if (session.users?.role !== 'superadmin') {
-          await db.supabase.from('sessions').delete().eq('id', session.id);
+          await supabase.from('sessions').delete().eq('id', session.id);
         }
       }
       loadSessions();
@@ -1049,7 +1049,7 @@ function SettingsView() {
       let deletedNews = 0;
 
       // 清理文章 - 删除重复标题
-      const { data: allPosts } = await db.supabase
+      const { data: allPosts } = await supabase
         .from('posts')
         .select('id, title, content');
       
@@ -1078,14 +1078,14 @@ function SettingsView() {
           // 分批删除（每次最多100条）
           for (let i = 0; i < toDelete.length; i += 100) {
             const batch = toDelete.slice(i, i + 100);
-            await db.supabase.from('posts').delete().in('id', batch);
+            await supabase.from('posts').delete().in('id', batch);
           }
           deletedPosts = toDelete.length;
         }
       }
 
       // 清理资讯 - 删除重复标题
-      const { data: allNews } = await db.supabase
+      const { data: allNews } = await supabase
         .from('news')
         .select('id, title, content');
       
@@ -1105,7 +1105,7 @@ function SettingsView() {
         if (toDelete.length > 0) {
           for (let i = 0; i < toDelete.length; i += 100) {
             const batch = toDelete.slice(i, i + 100);
-            await db.supabase.from('news').delete().in('id', batch);
+            await supabase.from('news').delete().in('id', batch);
           }
           deletedNews = toDelete.length;
         }
@@ -1136,7 +1136,7 @@ function SettingsView() {
       
       // 尝试保存到数据库
       try {
-        await db.supabase.from('site_config').upsert({
+        await supabase.from('site_config').upsert({
           key: 'modules',
           value: JSON.stringify(modules),
         }, { onConflict: 'key' });
@@ -1312,7 +1312,7 @@ function NewsManager() {
 
   const loadNews = async () => {
     try {
-      const { data, error } = await db.supabase
+      const { data, error } = await supabase
         .from('news')
         .select('*')
         .order('created_at', { ascending: false });
@@ -1328,7 +1328,7 @@ function NewsManager() {
   const handleDelete = async (id) => {
     if (confirm('确定要删除这条资讯吗？')) {
       try {
-        await db.supabase.from('news').delete().eq('id', id);
+        await supabase.from('news').delete().eq('id', id);
         loadNews();
       } catch (err) {
         alert('删除失败');
@@ -1433,9 +1433,9 @@ function NewsEditor({ news, onClose, onSave }) {
     setSaving(true);
     try {
       if (news) {
-        await db.supabase.from('news').update(formData).eq('id', news.id);
+        await supabase.from('news').update(formData).eq('id', news.id);
       } else {
-        await db.supabase.from('news').insert([{ ...formData, created_at: new Date().toISOString() }]);
+        await supabase.from('news').insert([{ ...formData, created_at: new Date().toISOString() }]);
       }
       onSave();
     } catch (err) {

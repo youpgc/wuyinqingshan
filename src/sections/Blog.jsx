@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ScrollReveal from '../components/ScrollReveal';
 import GlassCard from '../components/GlassCard';
+import SafeImage from '../components/SafeImage';
 import { supabase } from '../lib/supabase';
 
 const Blog = () => {
@@ -81,13 +82,14 @@ const Blog = () => {
                 <GlassCard className="group h-full flex flex-col">
                   {/* 图片 */}
                   <div className="relative h-48 overflow-hidden rounded-t-2xl">
-                    <motion.img
-                      src={post.image || 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800'}
-                      alt={post.title}
-                      className="w-full h-full object-cover"
-                      whileHover={{ scale: 1.05 }}
-                      transition={{ duration: 0.6 }}
-                    />
+                    <motion.div whileHover={{ scale: 1.05 }} transition={{ duration: 0.6 }} className="w-full h-full">
+                      <SafeImage
+                        src={post.image}
+                        alt={post.title}
+                        type="post"
+                        className="w-full h-full object-cover"
+                      />
+                    </motion.div>
                     <div className="absolute top-4 left-4">
                       <span className="px-3 py-1 text-xs font-medium rounded-full bg-black/50 backdrop-blur-sm text-white">
                         {post.category || '技术'}

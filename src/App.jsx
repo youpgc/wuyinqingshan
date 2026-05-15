@@ -17,6 +17,7 @@ import PostDetail from './pages/PostDetail';
 import BlogList from './pages/BlogList';
 import NewsList from './pages/NewsList';
 import NewsDetail from './pages/NewsDetail';
+import ScrollToTop from './components/ScrollToTop';
 import { supabase } from './lib/supabase';
 
 // 访问统计追踪组件
@@ -82,6 +83,7 @@ function Home() {
         <Contact />
       </main>
       <Footer />
+      <ScrollToTop />
     </div>
   );
 }

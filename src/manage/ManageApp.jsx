@@ -4,10 +4,12 @@ import {
   LayoutDashboard, FileText, MessageSquare, BarChart3, 
   Settings, LogOut, Eye, Users, TrendingUp, Plus,
   Edit2, Trash2, Mail, Menu, X as CloseIcon, CheckCircle,
-  Shield, UserPlus, Clock, Activity, ChevronRight, Power, Newspaper
+  Shield, UserPlus, Clock, Activity, ChevronRight, Power, Newspaper,
+  Calendar, FileWarning
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { db, supabase } from '../lib/supabase';
+import VisitChart from '../components/VisitChart';
 
 export default function ManageApp() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -119,10 +121,18 @@ function DashboardOverview() {
   const [stats, setStats] = useState({
     totalVisits: 0,
     uniqueVisitors: 0,
-    todayVisits: 0
+    todayVisits: 0,
+    totalPosts: 0,
+    totalNews: 0,
+    totalMessages: 0,
+    publishedPosts: 0,
+    draftPosts: 0
   });
-  const [chartData, setChartData] = useState([]);
-  const [recentMessages, setRecentMessages] = useState([]);
+  const [recentData, setRecentData] = useState({
+    posts: [],
+    news: [],
+    messages: []
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -131,23 +141,90 @@ function DashboardOverview() {
 
   const loadData = async () => {
     try {
-      const statsData = await db.visits.getStats();
-      setStats({
-        totalVisits: statsData.totalVisits,
-        uniqueVisitors: statsData.uniqueVisitors,
-        todayVisits: statsData.todayVisits
-      });
-      setChartData(statsData.last7Days);
+      // 加载访问统计
+      const { count: totalVisits } = await supabase
+        .from('visits')
+        .select('*', { count: 'exact', head: true });
       
-      const messages = await db.messages.getAll();
-      setRecentMessages(messages.slice(0, 5));
+      const { data: visitsData } = await supabase
+        .from('visits')
+        .select('visitor_id, created_at')
+        .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+      
+      const uniqueVisitors = new Set(visitsData?.map(v => v.visitor_id) || []).size;
+      const todayStart = new Date().toISOString().split('T')[0];
+      const todayVisits = visitsData?.filter(v => v.created_at.startsWith(todayStart)).length || 0;
+
+      // 加载文章统计
+      const { count: totalPosts } = await supabase
+        .from('posts')
+        .select('*', { count: 'exact', head: true });
+      const { count: publishedPosts } = await supabase
+        .from('posts')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'published');
+      
+      // 加载资讯统计
+      const { count: totalNews } = await supabase
+        .from('news')
+        .select('*', { count: 'exact', head: true });
+      
+      // 加载留言统计
+      const { count: totalMessages } = await supabase
+        .from('messages')
+        .select('*', { count: 'exact', head: true });
+
+      setStats({
+        totalVisits: totalVisits || 0,
+        uniqueVisitors: uniqueVisitors,
+        todayVisits: todayVisits,
+        totalPosts: totalPosts || 0,
+        totalNews: totalNews || 0,
+        totalMessages: totalMessages || 0,
+        publishedPosts: publishedPosts || 0,
+        draftPosts: (totalPosts || 0) - (publishedPosts || 0)
+      });
+
+      // 加载最近数据
+      const { data: recentPosts } = await supabase
+        .from('posts')
+        .select('id, title, created_at, views, status')
+        .order('created_at', { ascending: false })
+        .limit(5);
+      
+      const { data: recentNews } = await supabase
+        .from('news')
+        .select('id, title, created_at, views')
+        .order('created_at', { ascending: false })
+        .limit(5);
+      
+      const { data: recentMessages } = await supabase
+        .from('messages')
+        .select('id, name, content, created_at, status')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      setRecentData({
+        posts: recentPosts || [],
+        news: recentNews || [],
+        messages: recentMessages || []
+      });
     } catch (err) {
       console.error('Load data error:', err);
     }
     setLoading(false);
   };
 
-  const maxVisits = Math.max(...chartData.map(d => d.visits), 1);
+  const statCards = [
+    { title: '总访问量', value: stats.totalVisits, icon: Eye, color: 'from-blue-500 to-cyan-500', bgColor: 'bg-blue-500/10' },
+    { title: '独立访客', value: stats.uniqueVisitors, icon: Users, color: 'from-green-500 to-emerald-500', bgColor: 'bg-green-500/10' },
+    { title: '今日访问', value: stats.todayVisits, icon: TrendingUp, color: 'from-purple-500 to-pink-500', bgColor: 'bg-purple-500/10' },
+    { title: '文章总数', value: stats.totalPosts, icon: FileText, color: 'from-orange-500 to-yellow-500', bgColor: 'bg-orange-500/10' },
+    { title: '已发布', value: stats.publishedPosts, icon: CheckCircle, color: 'from-green-500 to-teal-500', bgColor: 'bg-green-500/10' },
+    { title: '草稿', value: stats.draftPosts, icon: FileWarning, color: 'from-gray-500 to-slate-500', bgColor: 'bg-gray-500/10' },
+    { title: '资讯总数', value: stats.totalNews, icon: Newspaper, color: 'from-rose-500 to-pink-500', bgColor: 'bg-rose-500/10' },
+    { title: '留言总数', value: stats.totalMessages, icon: MessageSquare, color: 'from-indigo-500 to-violet-500', bgColor: 'bg-indigo-500/10' },
+  ];
 
   return (
     <div className="space-y-6">
@@ -162,66 +239,130 @@ function DashboardOverview() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[
-              { title: '总访问量', value: stats.totalVisits.toLocaleString(), icon: Eye, color: 'text-blue-400' },
-              { title: '独立访客', value: stats.uniqueVisitors.toLocaleString(), icon: Users, color: 'text-green-400' },
-              { title: '今日访问', value: stats.todayVisits.toLocaleString(), icon: TrendingUp, color: 'text-purple-400' },
-            ].map((stat, index) => (
+          {/* 统计卡片 */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {statCards.map((stat, index) => (
               <motion.div
                 key={index}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10"
+                transition={{ delay: index * 0.05 }}
+                className={`${stat.bgColor} backdrop-blur-sm rounded-xl p-5 border border-white/5`}
               >
-                <stat.icon className={`w-6 h-6 ${stat.color} mb-4`} />
+                <stat.icon className={`w-5 h-5 mb-3 bg-gradient-to-r ${stat.color} bg-clip-text text-transparent`} />
                 <p className="text-white/60 text-sm">{stat.title}</p>
-                <p className="text-2xl font-bold text-white mt-1">{stat.value}</p>
+                <p className="text-2xl font-bold text-white mt-1">{stat.value.toLocaleString()}</p>
               </motion.div>
             ))}
           </div>
           
-          <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-            <h3 className="text-lg font-semibold text-white mb-4">访问趋势（最近7天）</h3>
-            <div className="h-48 flex items-end gap-2">
-              {chartData.map((item, index) => (
-                <div key={index} className="flex-1 flex flex-col items-center gap-2">
-                  <div 
-                    className="w-full bg-gradient-to-t from-purple-500 to-pink-500 rounded-t-lg min-h-[4px]"
-                    style={{ height: `${(item.visits / maxVisits) * 100}%` }}
-                  />
-                  <span className="text-xs text-white/40">{item.date}</span>
-                  <span className="text-xs text-white/60">{item.visits}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-            <h3 className="text-lg font-semibold text-white mb-4">最新留言</h3>
-            {recentMessages.length === 0 ? (
-              <p className="text-white/40 text-center py-8">暂无留言</p>
-            ) : (
-              <div className="space-y-3">
-                {recentMessages.map((msg) => (
-                  <div key={msg.id} className="flex items-center justify-between p-3 rounded-lg bg-white/5">
-                    <div>
-                      <p className="text-white font-medium">{msg.name}</p>
-                      <p className="text-white/40 text-sm">{msg.content?.substring(0, 50)}...</p>
+          {/* 访问趋势图表 */}
+          <VisitChart data={[]} title="访问趋势" />
+          
+          {/* 数据分布 */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* 最新文章 */}
+            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-orange-400" />
+                  最新文章
+                </h3>
+                <span className="text-white/40 text-xs">{stats.totalPosts} 篇</span>
+              </div>
+              {recentData.posts.length === 0 ? (
+                <p className="text-white/40 text-center py-6">暂无文章</p>
+              ) : (
+                <div className="space-y-3">
+                  {recentData.posts.map((post) => (
+                    <div key={post.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white text-sm truncate">{post.title}</p>
+                        <p className="text-white/40 text-xs mt-1">
+                          {new Date(post.created_at).toLocaleDateString('zh-CN')}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 ml-4">
+                        <span className="text-white/40 text-xs flex items-center gap-1">
+                          <Eye className="w-3 h-3" />
+                          {post.views || 0}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${
+                          post.status === 'published' 
+                            ? 'bg-green-500/20 text-green-400' 
+                            : 'bg-yellow-500/20 text-yellow-400'
+                        }`}>
+                          {post.status === 'published' ? '已发布' : '草稿'}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        msg.status === 'unread' ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 最新资讯 */}
+            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <Newspaper className="w-5 h-5 text-rose-400" />
+                  最新资讯
+                </h3>
+                <span className="text-white/40 text-xs">{stats.totalNews} 条</span>
+              </div>
+              {recentData.news.length === 0 ? (
+                <p className="text-white/40 text-center py-6">暂无资讯</p>
+              ) : (
+                <div className="space-y-3">
+                  {recentData.news.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white text-sm truncate">{item.title}</p>
+                        <p className="text-white/40 text-xs mt-1">
+                          {new Date(item.created_at).toLocaleDateString('zh-CN')}
+                        </p>
+                      </div>
+                      <span className="text-white/40 text-xs flex items-center gap-1 ml-4">
+                        <Eye className="w-3 h-3" />
+                        {item.views || 0}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 最新留言 */}
+            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5 text-indigo-400" />
+                  最新留言
+                </h3>
+                <span className="text-white/40 text-xs">{stats.totalMessages} 条</span>
+              </div>
+              {recentData.messages.length === 0 ? (
+                <p className="text-white/40 text-center py-6">暂无留言</p>
+              ) : (
+                <div className="space-y-3">
+                  {recentData.messages.map((msg) => (
+                    <div key={msg.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white text-sm">{msg.name}</p>
+                        <p className="text-white/40 text-xs truncate mt-1">{msg.content?.substring(0, 30)}...</p>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-full text-xs ml-4 ${
+                        msg.status === 'unread' 
+                          ? 'bg-red-500/20 text-red-400' 
+                          : 'bg-green-500/20 text-green-400'
                       }`}>
                         {msg.status === 'unread' ? '未读' : '已读'}
                       </span>
-                      <p className="text-white/40 text-xs mt-1">{new Date(msg.created_at).toLocaleDateString()}</p>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </>
       )}

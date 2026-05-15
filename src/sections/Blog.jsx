@@ -7,7 +7,7 @@ import GlassCard from '../components/GlassCard';
 import SafeImage from '../components/SafeImage';
 import { supabase } from '../lib/supabase';
 
-const Blog = () => {
+const Blog = ({ showCount = 6 }) => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -23,7 +23,7 @@ const Blog = () => {
         .select('*')
         .eq('status', 'published')
         .order('created_at', { ascending: false })
-        .limit(6);
+        .limit(showCount);
       
       if (error) throw error;
       setPosts(data || []);

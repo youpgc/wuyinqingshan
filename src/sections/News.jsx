@@ -13,7 +13,7 @@ const categoryConfig = {
   '技术动态': { icon: '📡', color: 'from-green-500 to-emerald-500', glowColor: 'rgba(34, 197, 94, 0.2)' },
 };
 
-const News = () => {
+const News = ({ showCount = 6 }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [news, setNews] = useState([]);
@@ -34,7 +34,8 @@ const News = () => {
       const { data, error } = await supabase
         .from('news')
         .select('*')
-        .order('views', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(showCount);
       
       if (error) throw error;
       setNews(data || []);

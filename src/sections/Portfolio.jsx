@@ -10,7 +10,7 @@ const GithubIcon = ({ className }) => (
   </svg>
 );
 
-const Portfolio = () => {
+const Portfolio = ({ showCount = 6 }) => {
   const projects = [
     {
       title: '创意电商平台',
@@ -90,7 +90,7 @@ const Portfolio = () => {
 
         {/* 项目网格 */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {projects.map((project, index) => (
+          {projects.slice(0, showCount).map((project, index) => (
             <ScrollReveal key={index} delay={index * 0.1}>
               <GlassCard 
                 className="group overflow-hidden h-full"

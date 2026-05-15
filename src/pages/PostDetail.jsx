@@ -196,11 +196,22 @@ export default function PostDetail() {
               <span className="inline-block px-3 py-1 text-sm font-medium rounded-full bg-purple-500/20 text-purple-400">
                 {post.category || '技术'}
               </span>
-              {post.tags?.map((tag, i) => (
-                <span key={i} className="px-2 py-0.5 text-xs rounded-full bg-white/5 text-white/60">
-                  {tag}
-                </span>
-              ))}
+              {(() => {
+                let tags = post.tags;
+                if (typeof tags === 'string') {
+                  try {
+                    tags = JSON.parse(tags);
+                  } catch {
+                    tags = tags.split(',').map(t => t.trim());
+                  }
+                }
+                if (!Array.isArray(tags)) tags = [];
+                return tags.map((tag, i) => (
+                  <span key={i} className="px-2 py-0.5 text-xs rounded-full bg-white/5 text-white/60">
+                    {tag}
+                  </span>
+                ));
+              })()}
             </div>
 
             {/* 标题 */}

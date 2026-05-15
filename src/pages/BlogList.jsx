@@ -148,11 +148,22 @@ const BlogList = () => {
                         {/* 标签和浏览量 */}
                         <div className="flex items-center justify-between">
                           <div className="flex flex-wrap gap-1">
-                            {post.tags?.slice(0, 2).map((tag, i) => (
-                              <span key={i} className="px-2 py-0.5 text-xs rounded-full bg-purple-500/20 text-purple-400">
-                                {tag}
-                              </span>
-                            ))}
+                            {(() => {
+                              let tags = post.tags;
+                              if (typeof tags === 'string') {
+                                try {
+                                  tags = JSON.parse(tags);
+                                } catch {
+                                  tags = tags.split(',').map(t => t.trim());
+                                }
+                              }
+                              if (!Array.isArray(tags)) tags = [];
+                              return tags.slice(0, 2).map((tag, i) => (
+                                <span key={i} className="px-2 py-0.5 text-xs rounded-full bg-purple-500/20 text-purple-400">
+                                  {tag}
+                                </span>
+                              ));
+                            })()}
                           </div>
                           <span className="flex items-center gap-1 text-white/40 text-sm">
                             <Eye className="w-4 h-4" />

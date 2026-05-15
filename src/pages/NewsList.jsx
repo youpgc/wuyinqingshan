@@ -104,40 +104,47 @@ const NewsList = () => {
                 {news.map((item, index) => (
                   <ScrollReveal key={item.id} delay={index * 0.05}>
                     <GlassCard className="p-6">
-                      <motion.a
-                        href={item.url || '#'}
-                        target={item.url ? '_blank' : '_self'}
-                        rel="noopener noreferrer"
-                        className="group block"
-                        whileHover={{ x: 5 }}
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-500/20 text-purple-400">
-                                {item.category || '技术动态'}
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-500/20 text-purple-400">
+                              {item.category || '技术动态'}
+                            </span>
+                            {item.hot > 80 && (
+                              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 text-xs">
+                                <TrendingUp className="w-3 h-3" />
+                                热
                               </span>
-                              {item.hot > 80 && (
-                                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 text-xs">
-                                  <TrendingUp className="w-3 h-3" />
-                                  热
-                                </span>
-                              )}
-                            </div>
-                            <h3 className="text-lg font-medium text-white group-hover:text-purple-400 transition-colors mb-2">
-                              {item.title}
-                            </h3>
-                            <div className="flex items-center gap-3 text-sm text-white/50">
-                              <span>{item.source || '未知来源'}</span>
-                              <span>·</span>
-                              <span>{formatTime(item.created_at)}</span>
-                            </div>
+                            )}
                           </div>
-                          {item.url && (
-                            <ExternalLink className="w-5 h-5 text-white/30 group-hover:text-purple-400 transition-colors flex-shrink-0 mt-1" />
-                          )}
+                          <motion.h3 
+                            onClick={() => navigate(`/news/${item.id}`)}
+                            className="text-lg font-medium text-white hover:text-purple-400 transition-colors mb-2 cursor-pointer"
+                            whileHover={{ x: 5 }}
+                          >
+                            {item.title}
+                          </motion.h3>
+                          <div className="flex items-center gap-3 text-sm text-white/50">
+                            <span>{item.source || '未知来源'}</span>
+                            <span>·</span>
+                            <span>{formatTime(item.created_at)}</span>
+                            {item.url && (
+                              <>
+                                <span>·</span>
+                                <a 
+                                  href={item.url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-purple-400 hover:text-purple-300 inline-flex items-center gap-1"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  原文 <ExternalLink className="w-3 h-3" />
+                                </a>
+                              </>
+                            )}
+                          </div>
                         </div>
-                      </motion.a>
+                      </div>
                     </GlassCard>
                   </ScrollReveal>
                 ))}

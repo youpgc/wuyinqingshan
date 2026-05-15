@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Calendar, Clock, ArrowRight, BookOpen } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ScrollReveal from '../components/ScrollReveal';
 import GlassCard from '../components/GlassCard';
 import { supabase } from '../lib/supabase';
@@ -8,6 +9,7 @@ import { supabase } from '../lib/supabase';
 const Blog = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadPosts();
@@ -114,14 +116,14 @@ const Blog = () => {
                       {post.excerpt || post.content?.substring(0, 100)}
                     </p>
 
-                    <motion.a
-                      href={`#/post/${post.id}`}
-                      className="inline-flex items-center gap-2 text-purple-400 text-sm font-medium group/link"
+                    <motion.button
+                      onClick={() => navigate(`/post/${post.id}`)}
+                      className="inline-flex items-center gap-2 text-purple-400 text-sm font-medium group/link cursor-pointer"
                       whileHover={{ x: 5 }}
                     >
                       <span>阅读全文</span>
                       <ArrowRight className="w-4 h-4 transition-transform group-hover/link:translate-x-1" />
-                    </motion.a>
+                    </motion.button>
                   </div>
                 </GlassCard>
               </ScrollReveal>

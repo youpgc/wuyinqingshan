@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Calendar, Clock, ArrowLeft, Share2, Bookmark, Eye } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -10,9 +11,8 @@ export default function PostDetail() {
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
-  // 从 URL 获取文章 ID
-  const postId = window.location.hash.replace('#/post/', '');
+  const { id: postId } = useParams();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (postId) {
@@ -58,9 +58,9 @@ export default function PostDetail() {
     return `${minutes} 分钟`;
   };
 
-  // 返回上一页
+  // 返回首页
   const goBack = () => {
-    window.history.back();
+    navigate('/');
   };
 
   if (loading) {

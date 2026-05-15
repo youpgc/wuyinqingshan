@@ -4,7 +4,7 @@ import {
   LayoutDashboard, FileText, MessageSquare, BarChart3, 
   Settings, LogOut, Eye, Users, TrendingUp, Plus,
   Edit2, Trash2, Mail, Menu, X as CloseIcon, CheckCircle,
-  Shield, UserPlus, Clock, Activity, ChevronRight, Power
+  Shield, UserPlus, Clock, Activity, ChevronRight, Power, Newspaper
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/supabase';
@@ -17,6 +17,7 @@ export default function ManageApp() {
   const menuItems = [
     { id: 'dashboard', label: '数据概览', icon: LayoutDashboard },
     { id: 'posts', label: '文章管理', icon: FileText },
+    { id: 'news', label: '资讯管理', icon: Newspaper },
     { id: 'messages', label: '访客留言', icon: MessageSquare },
     { id: 'analytics', label: '访问统计', icon: BarChart3 },
     { id: 'sessions', label: '在线用户', icon: Activity },
@@ -101,6 +102,7 @@ export default function ManageApp() {
         <div className="p-6">
           {activeTab === 'dashboard' && <DashboardOverview />}
           {activeTab === 'posts' && <PostsManager />}
+          {activeTab === 'news' && <NewsManager />}
           {activeTab === 'messages' && <MessagesManager />}
           {activeTab === 'analytics' && <AnalyticsView />}
           {activeTab === 'sessions' && <SessionsManager />}
@@ -259,6 +261,17 @@ function PostsManager() {
     }
   };
 
+  // 上架/下架文章
+  const togglePublish = async (post) => {
+    try {
+      const newStatus = post.status === 'published' ? 'draft' : 'published';
+      await db.posts.update(post.id, { status: newStatus });
+      loadPosts();
+    } catch (err) {
+      alert('操作失败');
+    }
+  };
+
   const handleEdit = (post) => {
     setEditingPost(post);
     setShowEditor(true);
@@ -317,6 +330,16 @@ function PostsManager() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => togglePublish(post)}
+                        className={`px-3 py-1 rounded-lg text-xs ${
+                          post.status === 'published' 
+                            ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30' 
+                            : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                        }`}
+                      >
+                        {post.status === 'published' ? '下架' : '上架'}
+                      </button>
                       <button onClick={() => handleEdit(post)} className="p-2 rounded-lg bg-white/5 text-white/60 hover:text-white">
                         <Edit2 className="w-4 h-4" />
                       </button>
@@ -1015,6 +1038,243 @@ function SettingsView() {
           <p className="text-white/60">邮箱：<span className="text-white">{user?.email}</span></p>
           <p className="text-white/60">角色：<span className="text-white capitalize">{user?.role === 'superadmin' ? '超级管理员' : user?.role === 'admin' ? '管理员' : '用户'}</span></p>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// 资讯管理
+function NewsManager() {
+  const [news, setNews] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showEditor, setShowEditor] = useState(false);
+  const [editingNews, setEditingNews] = useState(null);
+
+  useEffect(() => {
+    loadNews();
+  }, []);
+
+  const loadNews = async () => {
+    try {
+      const { data, error } = await db.supabase
+        .from('news')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      setNews(data || []);
+    } catch (err) {
+      console.error('Load news error:', err);
+    }
+    setLoading(false);
+  };
+
+  const handleDelete = async (id) => {
+    if (confirm('确定要删除这条资讯吗？')) {
+      try {
+        await db.supabase.from('news').delete().eq('id', id);
+        loadNews();
+      } catch (err) {
+        alert('删除失败');
+      }
+    }
+  };
+
+  const handleEdit = (item) => {
+    setEditingNews(item);
+    setShowEditor(true);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-white">资讯管理</h2>
+        <button 
+          onClick={() => { setEditingNews(null); setShowEditor(true); }}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white"
+        >
+          <Plus className="w-4 h-4" />
+          新建资讯
+        </button>
+      </div>
+      
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full" />
+        </div>
+      ) : news.length === 0 ? (
+        <div className="text-center py-12 text-white/40">
+          <Newspaper className="w-12 h-12 mx-auto mb-4 opacity-50" />
+          <p>暂无资讯</p>
+        </div>
+      ) : (
+        <div className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden">
+          <table className="w-full">
+            <thead className="border-b border-white/10">
+              <tr className="text-left text-white/60 text-sm">
+                <th className="px-6 py-4">标题</th>
+                <th className="px-6 py-4">分类</th>
+                <th className="px-6 py-4">来源</th>
+                <th className="px-6 py-4">热度</th>
+                <th className="px-6 py-4">创建时间</th>
+                <th className="px-6 py-4">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {news.map((item) => (
+                <tr key={item.id} className="border-b border-white/5 hover:bg-white/5">
+                  <td className="px-6 py-4 text-white max-w-xs truncate">{item.title}</td>
+                  <td className="px-6 py-4 text-white/60">{item.category || '-'}</td>
+                  <td className="px-6 py-4 text-white/60">{item.source || '-'}</td>
+                  <td className="px-6 py-4">
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      item.hot > 80 ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-white/60'
+                    }`}>
+                      {item.hot || 0}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-white/60 text-sm">
+                    {new Date(item.created_at).toLocaleString('zh-CN')}
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => handleEdit(item)} className="p-2 rounded-lg bg-white/5 text-white/60 hover:text-white">
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleDelete(item.id)} className="p-2 rounded-lg bg-white/5 text-red-400/60 hover:text-red-400">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {showEditor && (
+        <NewsEditor 
+          news={editingNews} 
+          onClose={() => setShowEditor(false)} 
+          onSave={() => { setShowEditor(false); loadNews(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// 资讯编辑器
+function NewsEditor({ news, onClose, onSave }) {
+  const [formData, setFormData] = useState({
+    title: news?.title || '',
+    source: news?.source || '',
+    category: news?.category || '技术动态',
+    hot: news?.hot || 50,
+    url: news?.url || ''
+  });
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      if (news) {
+        await db.supabase.from('news').update(formData).eq('id', news.id);
+      } else {
+        await db.supabase.from('news').insert([{ ...formData, created_at: new Date().toISOString() }]);
+      }
+      onSave();
+    } catch (err) {
+      alert('保存失败');
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+      <div className="bg-[#12121a] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="p-6 border-b border-white/10 flex items-center justify-between">
+          <h3 className="text-xl font-bold text-white">{news ? '编辑资讯' : '新建资讯'}</h3>
+          <button onClick={onClose} className="text-white/60 hover:text-white">
+            <CloseIcon className="w-6 h-6" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="block text-white/60 text-sm mb-2">标题</label>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white"
+              required
+            />
+          </div>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-white/60 text-sm mb-2">来源</label>
+              <input
+                type="text"
+                value={formData.source}
+                onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-white/60 text-sm mb-2">分类</label>
+              <select
+                value={formData.category}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white"
+              >
+                <option value="前端趋势">前端趋势</option>
+                <option value="AI编程">AI编程</option>
+                <option value="工程化">工程化</option>
+                <option value="技术动态">技术动态</option>
+                <option value="产品发布">产品发布</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-white/60 text-sm mb-2">原文链接</label>
+            <input
+              type="url"
+              value={formData.url}
+              onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white"
+              placeholder="https://"
+            />
+          </div>
+          <div>
+            <label className="block text-white/60 text-sm mb-2">热度值 (0-100)</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              value={formData.hot}
+              onChange={(e) => setFormData({ ...formData, hot: Number(e.target.value) })}
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white"
+            />
+          </div>
+          <div className="flex justify-end gap-4 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 py-3 rounded-xl bg-white/5 text-white/60 hover:text-white"
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white disabled:opacity-50"
+            >
+              {saving ? '保存中...' : '保存'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

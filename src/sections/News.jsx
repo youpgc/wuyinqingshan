@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
-import { Newspaper, TrendingUp, ExternalLink, RefreshCw } from 'lucide-react';
+import { Newspaper, TrendingUp, ExternalLink, RefreshCw, ArrowRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ScrollReveal from '../components/ScrollReveal';
 import GlassCard from '../components/GlassCard';
 import { supabase } from '../lib/supabase';
@@ -17,6 +18,7 @@ const News = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -177,7 +179,25 @@ const News = () => {
           </div>
         )}
 
-        <ScrollReveal delay={0.5}>
+        {/* 查看更多 */}
+        {categories.length > 0 && (
+          <ScrollReveal delay={0.5}>
+            <div className="text-center mt-12">
+              <motion.button
+                onClick={() => navigate('/news')}
+                className="inline-flex items-center gap-2 px-8 py-3 rounded-full bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-colors"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Newspaper className="w-5 h-5" />
+                <span>查看更多资讯</span>
+                <ArrowRight className="w-4 h-4" />
+              </motion.button>
+            </div>
+          </ScrollReveal>
+        )}
+
+        <ScrollReveal delay={0.6}>
           <div className="mt-12 p-6 rounded-2xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">

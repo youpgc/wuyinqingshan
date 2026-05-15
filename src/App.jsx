@@ -14,6 +14,8 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './manage/Login';
 import ManageApp from './manage/ManageApp';
 import PostDetail from './pages/PostDetail';
+import BlogList from './pages/BlogList';
+import NewsList from './pages/NewsList';
 import { supabase } from './lib/supabase';
 
 // 访问统计追踪组件
@@ -107,6 +109,8 @@ function App() {
           {/* 前台路由 */}
           <Route path="/" element={<Home />} />
           <Route path="/post/:id" element={<PostDetail />} />
+          <Route path="/blog" element={<BlogList />} />
+          <Route path="/news" element={<NewsList />} />
           
           {/* 后台管理路由 */}
           <Route path="/manage/login" element={<Login />} />

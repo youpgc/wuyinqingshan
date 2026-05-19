@@ -1059,9 +1059,10 @@ function AnalyticsView() {
     }, true);
   };
 
-  // 初始化 ECharts
-  useEffect(() => {
-    if (!trendChartRef.current || trendChartInstance.current) return;
+  // 初始化图表的函数
+  const initChart = () => {
+    if (trendChartInstance.current) return true; // 已初始化
+    if (!trendChartRef.current) return false; // ref 未就绪
     
     console.log('[TrendChart] Initializing...');
     trendChartInstance.current = echarts.init(trendChartRef.current, 'dark');
@@ -1069,32 +1070,41 @@ function AnalyticsView() {
     const handleResize = () => { trendChartInstance.current?.resize(); };
     window.addEventListener('resize', handleResize);
     
-    // 如果数据已加载，立即更新
-    if (stats?.last7Days) {
-      console.log('[TrendChart] Data already loaded, updating chart');
-      updateTrendChart();
-    }
-    
-    return () => {
-      console.log('[TrendChart] Cleaning up...');
-      window.removeEventListener('resize', handleResize);
-      trendChartInstance.current?.dispose();
-      trendChartInstance.current = null;
-    };
-  }, [trendChartRef.current]);
+    return true;
+  };
 
   // 加载数据
   useEffect(() => { loadStats(); }, []);
 
-  // 数据更新后更新图表
+  // 当 loading 变为 false 且数据就绪时，初始化图表
   useEffect(() => {
-    if (!trendChartInstance.current || !stats?.last7Days) {
-      console.log('[TrendChart] Skip update:', { hasInstance: !!trendChartInstance.current, hasData: !!stats?.last7Days });
-      return;
-    }
-    console.log('[TrendChart] Updating with data:', stats.last7Days);
+    if (loading || !stats?.last7Days) return;
+    
+    // 使用 requestAnimationFrame 确保 DOM 已渲染
+    const timer = requestAnimationFrame(() => {
+      if (initChart()) {
+        console.log('[TrendChart] Updating with data:', stats.last7Days);
+        updateTrendChart();
+      }
+    });
+    
+    return () => cancelAnimationFrame(timer);
+  }, [loading, stats]);
+
+  // 图表类型或视图切换时更新
+  useEffect(() => {
+    if (!trendChartInstance.current || !stats?.last7Days) return;
     updateTrendChart();
-  }, [stats, chartType, selectedView, pageModuleStats, homeModuleStats, moduleTrends, homeTrends]);
+  }, [chartType, selectedView, pageModuleStats, homeModuleStats, moduleTrends, homeTrends]);
+
+  // 清理
+  useEffect(() => {
+    return () => {
+      window.removeEventListener('resize', () => {});
+      trendChartInstance.current?.dispose();
+      trendChartInstance.current = null;
+    };
+  }, []);
 
   // 加载访问记录
   useEffect(() => { loadVisitRecords(); }, [visitPage]);

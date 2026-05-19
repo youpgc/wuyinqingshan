@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>雾隐青山</title>
+  <script type="text/javascript">
+    // Netlify SPA 路由处理
+    // 将所有路径重定向到首页，让 React Router 处理
+    var l = window.location;
+    if (l.pathname !== '/' && !l.pathname.startsWith('/assets')) {
+      // 保留 hash 路由
+      var newHash = l.pathname + l.search + l.hash;
+      window.location.replace(l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') + '/' + newHash);
+    }
+  </script>
+</head>
+<body>
+  <h1>页面加载中...</h1>
+</body>
+</html>

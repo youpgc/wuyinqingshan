@@ -1059,31 +1059,40 @@ function AnalyticsView() {
     }, true);
   };
 
-  // 初始化 ECharts（在 DOM 就绪后）
+  // 初始化 ECharts
   useEffect(() => {
-    // 使用 setTimeout 确保 DOM 已渲染
-    const timer = setTimeout(() => {
-      if (trendChartRef.current) {
-        trendChartInstance.current = echarts.init(trendChartRef.current, 'dark');
-        const handleResize = () => { trendChartInstance.current?.resize(); };
-        window.addEventListener('resize', handleResize);
-        // 如果数据已加载，立即更新
-        if (stats?.last7Days) updateTrendChart();
-      }
-    }, 100);
+    if (!trendChartRef.current || trendChartInstance.current) return;
+    
+    console.log('[TrendChart] Initializing...');
+    trendChartInstance.current = echarts.init(trendChartRef.current, 'dark');
+    
+    const handleResize = () => { trendChartInstance.current?.resize(); };
+    window.addEventListener('resize', handleResize);
+    
+    // 如果数据已加载，立即更新
+    if (stats?.last7Days) {
+      console.log('[TrendChart] Data already loaded, updating chart');
+      updateTrendChart();
+    }
+    
     return () => {
-      clearTimeout(timer);
+      console.log('[TrendChart] Cleaning up...');
+      window.removeEventListener('resize', handleResize);
       trendChartInstance.current?.dispose();
       trendChartInstance.current = null;
     };
-  }, []);
+  }, [trendChartRef.current]);
 
   // 加载数据
   useEffect(() => { loadStats(); }, []);
 
   // 数据更新后更新图表
   useEffect(() => {
-    if (!trendChartInstance.current || !stats?.last7Days) return;
+    if (!trendChartInstance.current || !stats?.last7Days) {
+      console.log('[TrendChart] Skip update:', { hasInstance: !!trendChartInstance.current, hasData: !!stats?.last7Days });
+      return;
+    }
+    console.log('[TrendChart] Updating with data:', stats.last7Days);
     updateTrendChart();
   }, [stats, chartType, selectedView, pageModuleStats, homeModuleStats, moduleTrends, homeTrends]);
 

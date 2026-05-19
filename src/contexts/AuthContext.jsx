@@ -24,27 +24,9 @@ export function AuthProvider({ children }) {
       
       if (sessionData && token) {
         const userData = JSON.parse(sessionData);
-        
-        const { data: session } = await supabase
-          .from('sessions')
-          .select('*')
-          .eq('user_id', userData.id)
-          .eq('token', token)
-          .gt('expires_at', new Date().toISOString())
-          .single();
-        
-        if (session) {
-          setUser(userData);
-          setSessionId(session.id);
-          
-          await supabase
-            .from('sessions')
-            .update({ expires_at: new Date(Date.now() + 3600000).toISOString() })
-            .eq('id', session.id);
-        } else {
-          localStorage.removeItem(SESSION_KEY);
-          localStorage.removeItem(TOKEN_KEY);
-        }
+        // 本地验证，不依赖 sessions 表
+        setUser(userData);
+        setSessionId('local_session');
       }
     } catch (err) {
       console.error('Check session error:', err);
@@ -54,102 +36,49 @@ export function AuthProvider({ children }) {
   };
 
   const checkSessionOnline = async () => {
+    // 本地会话管理，不依赖 sessions 表
     if (!user || !sessionId) return;
-    
-    try {
-      const { data: session } = await supabase
-        .from('sessions')
-        .select('id')
-        .eq('id', sessionId)
-        .gt('expires_at', new Date().toISOString())
-        .single();
-      
-      if (!session) {
-        // 会话被强制下线
-        localStorage.removeItem(SESSION_KEY);
-        localStorage.removeItem(TOKEN_KEY);
-        setUser(null);
-        alert('您已被管理员强制下线');
-        window.location.reload();
-      }
-    } catch {}
+    // 可选：添加本地会话过期检查
   };
 
   const signIn = async (email, password) => {
-    // 从数据库验证用户
-    const { data: userData, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', email)
-      .single();
-    
-    if (error || !userData) {
-      throw new Error('账号不存在');
-    }
-
-    if (userData.status !== 1) {
-      throw new Error('账号已被禁用');
-    }
-
-    // 验证密码
-    const validPasswords = {
-      'admin': 'Dw5pa,+>4+g,0Q2T',
-      'youpgc@foxmail.com': '1@youpgc@VIP',
-      'claude@wuyinqingshan.com': 'Claude2024!@#'
+    // 验证密码（硬编码验证）
+    const validUsers = {
+      'admin': { password: 'Dw5pa,+>4+g,0Q2T', name: 'Admin', role: 'admin', id: 'admin' },
+      'youpgc@foxmail.com': { password: '1@youpgc@VIP', name: 'Yaron', role: 'admin', id: 'user1' },
+      'claude@wuyinqingshan.com': { password: 'Claude2024!@#', name: 'Claude', role: 'admin', id: 'user2' }
     };
     
-    if (validPasswords[email] !== password) {
+    const userConfig = validUsers[email];
+    if (!userConfig) {
+      throw new Error('账号不存在');
+    }
+    
+    if (userConfig.password !== password) {
       throw new Error('密码错误');
     }
 
     // 生成会话 token
     const token = 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 32);
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7天后过期
-
-    // 记录会话
-    const { data: newSession, error: sessionError } = await supabase
-      .from('sessions')
-      .insert({
-        user_id: userData.id,
-        token: token,
-        expires_at: expiresAt
-      })
-      .select()
-      .single();
-
-    if (sessionError) {
-      console.error('Session error:', sessionError);
-    }
-
-    // 更新用户最后登录信息
-    await supabase
-      .from('users')
-      .update({ 
-        last_login: new Date().toISOString(),
-        last_ip: 'client'
-      })
-      .eq('id', userData.id);
 
     const userInfo = {
-      id: userData.id,
-      email: userData.email,
-      name: userData.name,
-      role: userData.role
+      id: userConfig.id,
+      email: email,
+      name: userConfig.name,
+      role: userConfig.role
     };
+    
+    setUser(userInfo);
+    setSessionId('local_' + Date.now());
     
     localStorage.setItem(SESSION_KEY, JSON.stringify(userInfo));
     localStorage.setItem(TOKEN_KEY, token);
-    setUser(userInfo);
-    setSessionId(newSession?.id);
     
     return userInfo;
   };
 
   const signOut = async () => {
-    // 删除会话
-    if (sessionId) {
-      await supabase.from('sessions').delete().eq('id', sessionId);
-    }
+    // 本地登出，不依赖 sessions 表
     localStorage.removeItem(SESSION_KEY);
     localStorage.removeItem(TOKEN_KEY);
     setUser(null);

@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import * as echarts from 'echarts';
 import { 
   LayoutDashboard, FileText, MessageSquare, BarChart3, 
   Settings, LogOut, Eye, Users, TrendingUp, Plus,
@@ -11,6 +12,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { db, supabase } from '../lib/supabase';
 import VisitChart from '../components/VisitChart';
+import { MiniBarChart } from '../components/ECharts';
 
 export default function ManageApp() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -818,66 +820,451 @@ function MessagesManager() {
 // 访问统计
 function AnalyticsView() {
   const [stats, setStats] = useState(null);
+  const [pageModuleStats, setPageModuleStats] = useState([]);
+  const [homeModuleStats, setHomeModuleStats] = useState([]);
+  const [moduleTrends, setModuleTrends] = useState({});
+  const [homeTrends, setHomeTrends] = useState({});
+  const [visitRecords, setVisitRecords] = useState([]);
+  const [visitPage, setVisitPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [chartType, setChartType] = useState('bar');
+  const [selectedView, setSelectedView] = useState('all');
+  const trendChartRef = useRef(null);
+  const trendChartInstance = useRef(null);
 
-  useEffect(() => {
-    loadStats();
-  }, []);
+  const PAGE_MODULES = [
+    { id: 'home', name: '首页', icon: '🏠', color: '#a855f7', paths: ['/', ''] },
+    { id: 'blog', name: '博客', icon: '📝', color: '#3b82f6', paths: ['/blog'], detailPrefix: '/post/' },
+    { id: 'news', name: '资讯', icon: '📰', color: '#22c55e', paths: ['/news'], detailPrefix: '/news/' },
+    { id: 'portfolio', name: '作品', icon: '🎨', color: '#ec4899', paths: ['/portfolio'] },
+    { id: 'tools', name: '工具箱', icon: '🔧', color: '#8b5cf6', paths: ['/tools'] },
+    { id: 'about', name: '关于我', icon: '👤', color: '#6366f1', paths: ['/about'] },
+    { id: 'contact', name: '联系我', icon: '📧', color: '#14b8a6', paths: ['/contact'] },
+  ];
 
+  const HOME_MODULES = [
+    { id: 'home_blog', name: '博客', icon: '📝', color: '#3b82f6' },
+    { id: 'home_news', name: '资讯', icon: '📰', color: '#22c55e' },
+    { id: 'home_portfolio', name: '作品', icon: '🎨', color: '#ec4899' },
+    { id: 'home_tools', name: '工具箱', icon: '🔧', color: '#8b5cf6' },
+    { id: 'home_about', name: '关于我', icon: '👤', color: '#6366f1' },
+    { id: 'home_contact', name: '联系我', icon: '📧', color: '#14b8a6' },
+  ];
+
+  // 根据 page_path 获取模块
+  const getPageModuleByRecord = (record) => {
+    const path = record.page_path || '/';
+    if (path.startsWith('/#module-')) {
+      const moduleId = path.substring(9);
+      const mapping = { blog: 'home_blog', news: 'home_news', portfolio: 'home_portfolio', tools: 'home_tools', about: 'home_about', contact: 'home_contact' };
+      const homeId = mapping[moduleId];
+      if (homeId) return HOME_MODULES.find(m => m.id === homeId);
+      return HOME_MODULES[0];
+    }
+    if (path === '/' || path === '') return PAGE_MODULES.find(m => m.id === 'home');
+    if (path === '/blog' || path.startsWith('/post/')) return PAGE_MODULES.find(m => m.id === 'blog');
+    if (path === '/news' || path.startsWith('/news/')) return PAGE_MODULES.find(m => m.id === 'news');
+    if (path === '/portfolio' || path.startsWith('/portfolio/')) return PAGE_MODULES.find(m => m.id === 'portfolio');
+    if (path === '/tools') return PAGE_MODULES.find(m => m.id === 'tools');
+    if (path === '/about') return PAGE_MODULES.find(m => m.id === 'about');
+    if (path === '/contact') return PAGE_MODULES.find(m => m.id === 'contact');
+    return PAGE_MODULES[0];
+  };
+
+  const isHomeModuleRecord = (record) => {
+    return (record.page_path || '').startsWith('/#module-');
+  };
+
+  // 加载统计数据
   const loadStats = async () => {
     try {
-      const data = await db.visits.getStats();
-      setStats(data);
+      const { count: totalVisits } = await supabase
+        .from('visit_logs')
+        .select('*', { count: 'exact', head: true });
+
+      const { data: rawVisits } = await supabase
+        .from('visit_logs')
+        .select('visitor_id, created_at, visit_type, page_path, resource_type')
+        .gte('created_at', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString())
+        .order('created_at', { ascending: false });
+
+      const uniqueVisitors = new Set(rawVisits?.map(v => v.visitor_id) || []).size;
+      const todayStart = new Date().toISOString().split('T')[0];
+      const todayVisits = rawVisits?.filter(v => v.created_at.startsWith(todayStart)).length || 0;
+
+      const now = new Date();
+      const dayOfWeek = now.getDay() || 7;
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - dayOfWeek + 1);
+      const weekVisits = rawVisits?.filter(v => v.created_at >= weekStart.toISOString().split('T')[0]).length || 0;
+
+      const byDay = {};
+      rawVisits?.forEach(v => {
+        const day = v.created_at.split('T')[0];
+        byDay[day] = (byDay[day] || 0) + 1;
+      });
+
+      const last7Days = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        last7Days.push({ date: `${d.getMonth() + 1}/${d.getDate()}`, visits: byDay[dateStr] || 0 });
+      }
+
+      setStats({ totalVisits: totalVisits || 0, uniqueVisitors, todayVisits, weekVisits, last7Days });
+
+      // 模块统计
+      const pageModuleMap = {};
+      PAGE_MODULES.forEach(m => { pageModuleMap[m.id] = { ...m, visits: 0, uniqueVisitors: new Set() }; });
+      const homeModuleMap = {};
+      HOME_MODULES.forEach(m => { homeModuleMap[m.id] = { ...m, visits: 0, uniqueVisitors: new Set() }; });
+
+      rawVisits?.forEach(v => {
+        const module = getPageModuleByRecord(v);
+        if (isHomeModuleRecord(v)) {
+          if (homeModuleMap[module.id]) {
+            homeModuleMap[module.id].visits++;
+            homeModuleMap[module.id].uniqueVisitors.add(v.visitor_id);
+          }
+        } else {
+          if (pageModuleMap[module.id]) {
+            pageModuleMap[module.id].visits++;
+            pageModuleMap[module.id].uniqueVisitors.add(v.visitor_id);
+          }
+        }
+      });
+
+      setPageModuleStats(Object.values(pageModuleMap).map(m => ({ ...m, uniqueVisitors: m.uniqueVisitors.size })));
+      setHomeModuleStats(Object.values(homeModuleMap).map(m => ({ ...m, uniqueVisitors: m.uniqueVisitors.size })));
+
+      // 7日趋势
+      const trends = {};
+      PAGE_MODULES.forEach(module => {
+        const moduleVisits = rawVisits?.filter(v => {
+          const m = getPageModuleByRecord(v);
+          return m.id === module.id && !isHomeModuleRecord(v);
+        }) || [];
+        const mByDay = {};
+        moduleVisits.forEach(v => { const day = v.created_at.split('T')[0]; mByDay[day] = (mByDay[day] || 0) + 1; });
+        const mLast7 = [];
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date(); d.setDate(d.getDate() - i);
+          const ds = d.toISOString().split('T')[0];
+          mLast7.push({ date: `${d.getMonth() + 1}/${d.getDate()}`, visits: mByDay[ds] || 0 });
+        }
+        trends[module.id] = mLast7;
+      });
+      setModuleTrends(trends);
+
+      const homeT = {};
+      HOME_MODULES.forEach(module => {
+        const moduleVisits = rawVisits?.filter(v => {
+          const m = getPageModuleByRecord(v);
+          return m.id === module.id && isHomeModuleRecord(v);
+        }) || [];
+        const hByDay = {};
+        moduleVisits.forEach(v => { const day = v.created_at.split('T')[0]; hByDay[day] = (hByDay[day] || 0) + 1; });
+        const hLast7 = [];
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date(); d.setDate(d.getDate() - i);
+          const ds = d.toISOString().split('T')[0];
+          hLast7.push({ date: `${d.getMonth() + 1}/${d.getDate()}`, visits: hByDay[ds] || 0 });
+        }
+        homeT[module.id] = hLast7;
+      });
+      setHomeTrends(homeT);
     } catch (err) {
       console.error('Load stats error:', err);
     }
     setLoading(false);
   };
 
+  // 加载访问记录
+  const loadVisitRecords = async () => {
+    const pageSize = 20;
+    const from = (visitPage - 1) * pageSize;
+    const { data } = await supabase
+      .from('visit_logs')
+      .select('visitor_id, page_path, visit_type, created_at')
+      .order('created_at', { ascending: false })
+      .range(from, from + pageSize - 1);
+    setVisitRecords(data || []);
+  };
+
+  // 更新趋势图表
+  const updateTrendChart = () => {
+    const chart = trendChartInstance.current;
+    if (!chart || !stats?.last7Days) return;
+
+    const last7DaysLabels = stats.last7Days.map(d => d.date);
+    const series = [];
+
+    const currentPageStats = selectedView === 'home' ? [] : pageModuleStats;
+    const currentHomeStats = selectedView === 'pages' ? [] : homeModuleStats;
+
+    if (selectedView !== 'home') {
+      series.push({
+        name: '总访问', type: chartType,
+        data: stats.last7Days.map(d => d.visits),
+        itemStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: '#a855f7' }, { offset: 1, color: '#ec4899' },
+          ]),
+          borderRadius: chartType === 'bar' ? [4, 4, 0, 0] : 0,
+        },
+        lineStyle: { color: '#a855f7', width: 3 },
+        areaStyle: chartType === 'line' ? {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(168, 85, 247, 0.3)' },
+            { offset: 1, color: 'rgba(168, 85, 247, 0)' },
+          ]),
+        } : undefined,
+        smooth: chartType === 'line',
+      });
+
+      currentPageStats.slice(0, 4).forEach(module => {
+        const trend = moduleTrends[module.id] || [];
+        series.push({
+          name: module.name, type: chartType,
+          data: trend.map(d => d.visits),
+          itemStyle: { color: module.color, borderRadius: chartType === 'bar' ? [4, 4, 0, 0] : 0 },
+          lineStyle: { color: module.color, width: 2 },
+          smooth: chartType === 'line',
+        });
+      });
+    }
+
+    if (selectedView !== 'pages') {
+      currentHomeStats.slice(0, 4).forEach(module => {
+        const trend = homeTrends[module.id] || [];
+        series.push({
+          name: module.name, type: chartType,
+          data: trend.map(d => d.visits),
+          itemStyle: { color: module.color, borderRadius: chartType === 'bar' ? [4, 4, 0, 0] : 0 },
+          lineStyle: { color: module.color, width: 2 },
+          smooth: chartType === 'line',
+        });
+      });
+    }
+
+    chart.setOption({
+      backgroundColor: 'transparent',
+      tooltip: { trigger: 'axis', backgroundColor: 'rgba(26, 26, 46, 0.9)', borderColor: 'rgba(255, 255, 255, 0.1)', textStyle: { color: '#fff' } },
+      legend: { data: series.map(s => s.name), textStyle: { color: 'rgba(255,255,255,0.7)', fontSize: 12 }, top: 0, itemWidth: 16, itemHeight: 10 },
+      grid: { left: '3%', right: '4%', bottom: '3%', top: 40, containLabel: true },
+      xAxis: { type: 'category', data: last7DaysLabels, axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.2)' } }, axisLabel: { color: 'rgba(255, 255, 255, 0.6)' } },
+      yAxis: { type: 'value', axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.2)' } }, axisLabel: { color: 'rgba(255, 255, 255, 0.6)' }, splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.1)' } } },
+      series,
+    }, true);
+  };
+
+  // 初始化 ECharts（在 DOM 就绪后）
+  useEffect(() => {
+    // 使用 setTimeout 确保 DOM 已渲染
+    const timer = setTimeout(() => {
+      if (trendChartRef.current) {
+        trendChartInstance.current = echarts.init(trendChartRef.current, 'dark');
+        const handleResize = () => { trendChartInstance.current?.resize(); };
+        window.addEventListener('resize', handleResize);
+        // 如果数据已加载，立即更新
+        if (stats?.last7Days) updateTrendChart();
+      }
+    }, 100);
+    return () => {
+      clearTimeout(timer);
+      trendChartInstance.current?.dispose();
+      trendChartInstance.current = null;
+    };
+  }, []);
+
+  // 加载数据
+  useEffect(() => { loadStats(); }, []);
+
+  // 数据更新后更新图表
+  useEffect(() => {
+    if (!trendChartInstance.current || !stats?.last7Days) return;
+    updateTrendChart();
+  }, [stats, chartType, selectedView, pageModuleStats, homeModuleStats, moduleTrends, homeTrends]);
+
+  // 加载访问记录
+  useEffect(() => { loadVisitRecords(); }, [visitPage]);
+
+  const totalPageVisits = pageModuleStats.reduce((sum, m) => sum + m.visits, 0);
+  const totalHomeVisits = homeModuleStats.reduce((sum, m) => sum + m.visits, 0);
+
+  const formatDate = (dateStr) => {
+    const d = new Date(dateStr);
+    return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+  };
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-white">访问统计</h2>
-      
+
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <div className="animate-spin w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full" />
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-              <Activity className="w-6 h-6 text-blue-400 mb-4" />
-              <p className="text-white/60 text-sm">总访问量</p>
-              <p className="text-2xl font-bold text-white">{stats?.totalVisits || 0}</p>
+          {/* 概览卡片 */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { icon: <Activity className="w-5 h-5 text-purple-400" />, label: '总访问', value: stats?.totalVisits || 0 },
+              { icon: <Users className="w-5 h-5 text-blue-400" />, label: '独立访客', value: stats?.uniqueVisitors || 0 },
+              { icon: <Eye className="w-5 h-5 text-green-400" />, label: '今日访问', value: stats?.todayVisits || 0 },
+              { icon: <TrendingUp className="w-5 h-5 text-pink-400" />, label: '本周访问', value: stats?.weekVisits || 0 },
+            ].map((card, i) => (
+              <div key={i} className="bg-white/5 backdrop-blur-sm rounded-xl p-5 border border-white/10">
+                <div className="flex items-center justify-between mb-2">
+                  {card.icon}
+                  <span className="text-xs text-white/40">{card.label}</span>
+                </div>
+                <p className="text-2xl font-bold text-white">{card.value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* 趋势图表 */}
+          <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
+              <h3 className="text-lg font-semibold text-white">访问趋势（近7天）</h3>
+              <div className="flex items-center gap-3">
+                <div className="flex bg-white/5 rounded-lg p-1">
+                  {['all', 'pages', 'home'].map(view => (
+                    <button key={view} onClick={() => setSelectedView(view)}
+                      className={`px-3 py-1.5 rounded text-sm transition-colors ${selectedView === view ? 'bg-purple-500 text-white' : 'text-white/60 hover:text-white'}`}>
+                      {{ all: '全部', pages: '页面', home: '首页模块' }[view]}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex bg-white/5 rounded-lg p-1">
+                  <button onClick={() => setChartType('bar')} className={`px-3 py-1.5 rounded text-sm transition-colors ${chartType === 'bar' ? 'bg-purple-500 text-white' : 'text-white/60 hover:text-white'}`}>柱状图</button>
+                  <button onClick={() => setChartType('line')} className={`px-3 py-1.5 rounded text-sm transition-colors ${chartType === 'line' ? 'bg-purple-500 text-white' : 'text-white/60 hover:text-white'}`}>折线图</button>
+                </div>
+              </div>
             </div>
+            <div ref={trendChartRef} style={{ width: '100%', height: '400px' }} />
+          </div>
+
+          {/* 首页模块点击统计 */}
+          {homeModuleStats.some(m => m.visits > 0) && (
             <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-              <Users className="w-6 h-6 text-green-400 mb-4" />
-              <p className="text-white/60 text-sm">独立访客</p>
-              <p className="text-2xl font-bold text-white">{stats?.uniqueVisitors || 0}</p>
+              <h3 className="text-lg font-semibold text-white mb-4">首页模块点击统计</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                {homeModuleStats.filter(m => m.visits > 0).map(module => {
+                  const percentage = totalHomeVisits > 0 ? ((module.visits / totalHomeVisits) * 100).toFixed(1) : 0;
+                  return (
+                    <div key={module.id} className="rounded-xl p-3 transition-all hover:scale-[1.02]"
+                      style={{ backgroundColor: `${module.color}15`, border: `1px solid ${module.color}30` }}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-lg">{module.icon}</span>
+                        <span className="text-white font-medium text-xs">{module.name}</span>
+                      </div>
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-xl font-bold" style={{ color: module.color }}>{module.visits}</span>
+                        <span className="text-white/40 text-xs">{percentage}%</span>
+                      </div>
+                      <MiniBarChart data={homeTrends[module.id] || []} color={module.color} height={32} />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-              <Eye className="w-6 h-6 text-purple-400 mb-4" />
-              <p className="text-white/60 text-sm">今日访问</p>
-              <p className="text-2xl font-bold text-white">{stats?.todayVisits || 0}</p>
+          )}
+
+          {/* 详细统计表格 */}
+          <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+            <h3 className="text-lg font-semibold text-white mb-4">页面访问统计</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="border-b border-white/10">
+                  <tr className="text-left text-white/60 text-sm">
+                    <th className="px-4 py-3">模块</th>
+                    <th className="px-4 py-3">访问次数</th>
+                    <th className="px-4 py-3">独立访客</th>
+                    <th className="px-4 py-3">占比</th>
+                    <th className="px-4 py-3">7日趋势</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pageModuleStats.filter(m => m.visits > 0).map(module => {
+                    const percentage = totalPageVisits > 0 ? ((module.visits / totalPageVisits) * 100).toFixed(1) : 0;
+                    return (
+                      <tr key={module.id} className="border-b border-white/5">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">{module.icon}</span>
+                            <span style={{ color: module.color }}>{module.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-white font-medium">{module.visits}</td>
+                        <td className="px-4 py-3 text-white/60">{module.uniqueVisitors}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 h-2 bg-white/10 rounded-full overflow-hidden">
+                              <div className="h-full rounded-full" style={{ width: `${percentage}%`, backgroundColor: module.color }} />
+                            </div>
+                            <span className="text-white/40 text-xs">{percentage}%</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 w-36">
+                          <MiniBarChart data={moduleTrends[module.id] || []} color={module.color} height={32} />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
 
+          {/* 最近访问记录 */}
           <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-            <h3 className="text-lg font-semibold text-white mb-6">日访问量趋势</h3>
-            <div className="h-64 flex items-end gap-2">
-              {stats?.last7Days?.map((item, index) => {
-                const max = Math.max(...(stats.last7Days?.map(d => d.visits) || [1]));
-                return (
-                  <div key={index} className="flex-1 flex flex-col items-center gap-2">
-                    <div 
-                      className="w-full bg-gradient-to-t from-purple-500 to-pink-500 rounded-t-lg min-h-[4px]"
-                      style={{ height: `${(item.visits / max) * 100}%` }}
-                    />
-                    <span className="text-xs text-white/40">{item.date}</span>
-                    <span className="text-sm text-white/60">{item.visits}</span>
-                  </div>
-                );
-              })}
+            <h3 className="text-lg font-semibold text-white mb-4">最近访问记录</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="border-b border-white/10">
+                  <tr className="text-left text-white/60 text-sm">
+                    <th className="px-4 py-3">访客ID</th>
+                    <th className="px-4 py-3">页面路径</th>
+                    <th className="px-4 py-3">类型</th>
+                    <th className="px-4 py-3">访问时间</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visitRecords.map((record, index) => {
+                    const module = getPageModuleByRecord(record);
+                    const isHome = isHomeModuleRecord(record);
+                    return (
+                      <tr key={index} className="border-b border-white/5">
+                        <td className="px-4 py-3 text-white/60 text-sm font-mono">{record.visitor_id?.substring(0, 20)}...</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <span>{module.icon}</span>
+                            <span className="text-white text-sm">{record.page_path}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded text-xs ${isHome ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'}`}>
+                            {isHome ? '模块点击' : '页面访问'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-white/60 text-sm">{formatDate(record.created_at)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {/* 分页 */}
+            <div className="flex justify-center mt-4 gap-2">
+              <button onClick={() => setVisitPage(p => Math.max(1, p - 1))} disabled={visitPage <= 1}
+                className="px-3 py-1.5 rounded-lg bg-white/5 text-white/60 text-sm hover:bg-white/10 disabled:opacity-30">上一页</button>
+              <span className="px-3 py-1.5 text-white/40 text-sm">第 {visitPage} 页</span>
+              <button onClick={() => setVisitPage(p => p + 1)} disabled={visitRecords.length < 20}
+                className="px-3 py-1.5 rounded-lg bg-white/5 text-white/60 text-sm hover:bg-white/10 disabled:opacity-30">下一页</button>
             </div>
           </div>
         </>

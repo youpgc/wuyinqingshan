@@ -25,7 +25,6 @@ export function AuthProvider({ children }) {
       if (sessionData && token) {
         const userData = JSON.parse(sessionData);
         
-        // 验证会话是否仍然有效
         const { data: session } = await supabase
           .from('sessions')
           .select('*')
@@ -38,13 +37,11 @@ export function AuthProvider({ children }) {
           setUser(userData);
           setSessionId(session.id);
           
-          // 更新最后活跃时间
           await supabase
             .from('sessions')
             .update({ expires_at: new Date(Date.now() + 3600000).toISOString() })
             .eq('id', session.id);
         } else {
-          // 会话已过期
           localStorage.removeItem(SESSION_KEY);
           localStorage.removeItem(TOKEN_KEY);
         }
@@ -52,6 +49,7 @@ export function AuthProvider({ children }) {
     } catch (err) {
       console.error('Check session error:', err);
     }
+    
     setLoading(false);
   };
 

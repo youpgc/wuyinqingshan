@@ -7,7 +7,7 @@ import {
   Settings, LogOut, Eye, Users, TrendingUp, Plus,
   Edit2, Trash2, Mail, Menu, X as CloseIcon, CheckCircle,
   Shield, UserPlus, Clock, Activity, ChevronRight, Power, Newspaper,
-  Calendar, FileWarning
+  Calendar, FileWarning, ExternalLink
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { db, supabase } from '../lib/supabase';
@@ -1943,11 +1943,13 @@ function NewsManager() {
   const [viewingNews, setViewingNews] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
 
   const filteredNews = allNews.filter(item => {
     const matchSearch = !searchTerm || item.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchCategory = filterCategory === 'all' || item.category === filterCategory;
-    return matchSearch && matchCategory;
+    const matchStatus = filterStatus === 'all' || item.status === filterStatus;
+    return matchSearch && matchCategory && matchStatus;
   });
 
   useEffect(() => {
@@ -1960,7 +1962,6 @@ function NewsManager() {
         .from('news')
         .select('*')
         .order('created_at', { ascending: false });
-      
       if (error) throw error;
       setAllNews(data || []);
     } catch (err) {
@@ -1983,6 +1984,29 @@ function NewsManager() {
   const handleEdit = (item) => {
     setEditingNews(item);
     setShowEditor(true);
+  };
+
+  // 上架/下架资讯
+  const togglePublish = async (item) => {
+    try {
+      const newStatus = item.status === 'published' ? 'draft' : 'published';
+      await supabase.from('news').update({ status: newStatus }).eq('id', item.id);
+      loadNews();
+    } catch (err) {
+      alert('操作失败');
+    }
+  };
+
+  // 渲染详情弹窗内容
+  const renderNewsContent = (content) => {
+    if (!content) return null;
+    if (content.includes('```') || content.includes('##') || content.includes('**')) {
+      return <div className="text-white/80 whitespace-pre-wrap break-words leading-relaxed">{content}</div>;
+    }
+    if (content.startsWith('<')) {
+      return <div dangerouslySetInnerHTML={{ __html: content }} />;
+    }
+    return <p className="text-white/80 whitespace-pre-wrap break-words leading-relaxed">{content}</p>;
   };
 
   return (
@@ -2018,8 +2042,17 @@ function NewsManager() {
           <option value="技术动态">技术动态</option>
           <option value="产品发布">产品发布</option>
         </select>
+        <select
+          value={filterStatus}
+          onChange={e => setFilterStatus(e.target.value)}
+          className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm"
+        >
+          <option value="all">全部状态</option>
+          <option value="published">已发布</option>
+          <option value="draft">草稿</option>
+        </select>
         <button
-          onClick={() => { setSearchTerm(''); setFilterCategory('all'); }}
+          onClick={() => { setSearchTerm(''); setFilterCategory('all'); setFilterStatus('all'); }}
           className="px-4 py-2 rounded-lg bg-white/5 text-white/60 text-sm hover:text-white hover:bg-white/10 transition-colors"
         >
           重置
@@ -2043,7 +2076,8 @@ function NewsManager() {
                 <th className="px-6 py-4">标题</th>
                 <th className="px-6 py-4">分类</th>
                 <th className="px-6 py-4">来源</th>
-                <th className="px-6 py-4">浏览量</th>
+                <th className="px-6 py-4">浏览</th>
+                <th className="px-6 py-4">状态</th>
                 <th className="px-6 py-4">创建时间</th>
                 <th className="px-6 py-4">操作</th>
               </tr>
@@ -2054,9 +2088,12 @@ function NewsManager() {
                   <td className="px-6 py-4 text-white max-w-xs truncate">{item.title}</td>
                   <td className="px-6 py-4 text-white/60">{item.category || '-'}</td>
                   <td className="px-6 py-4 text-white/60">{item.source || '-'}</td>
+                  <td className="px-6 py-4 text-white/60">{item.views || 0}</td>
                   <td className="px-6 py-4">
-                    <span className="px-2 py-1 rounded-full text-xs bg-white/10 text-white/60">
-                      {item.views || 0}
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      item.status === 'published' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+                    }`}>
+                      {item.status === 'published' ? '已发布' : '草稿'}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-white/60 text-sm">
@@ -2066,6 +2103,13 @@ function NewsManager() {
                     <div className="flex items-center gap-2">
                       <button onClick={() => setViewingNews(item)} className="p-2 rounded-lg bg-white/5 text-blue-400/60 hover:text-blue-400" title="查看详情">
                         <Eye className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => togglePublish(item)} className={`px-3 py-1 rounded-lg text-xs ${
+                        item.status === 'published' 
+                          ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30' 
+                          : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                      }`}>
+                        {item.status === 'published' ? '下架' : '上架'}
                       </button>
                       <button onClick={() => handleEdit(item)} className="p-2 rounded-lg bg-white/5 text-white/60 hover:text-white">
                         <Edit2 className="w-4 h-4" />
@@ -2082,55 +2126,84 @@ function NewsManager() {
         </div>
       )}
 
+      {/* 资讯详情弹窗 */}
       {viewingNews && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-          <div className="bg-[#12121a] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-[#12121a] rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-white/10 flex items-center justify-between">
               <h3 className="text-xl font-bold text-white">资讯详情</h3>
               <button onClick={() => setViewingNews(null)} className="text-white/60 hover:text-white">
                 <CloseIcon className="w-6 h-6" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-5">
               <div>
-                <label className="block text-white/40 text-xs mb-1">标题</label>
-                <h2 className="text-lg font-semibold text-white">{viewingNews.title}</h2>
+                <h2 className="text-xl font-semibold text-white leading-snug">{viewingNews.title}</h2>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="bg-white/5 rounded-xl p-3">
                   <label className="block text-white/40 text-xs mb-1">分类</label>
-                  <span className="inline-block px-3 py-1 rounded-full bg-purple-500/20 text-purple-400 text-sm">{viewingNews.category}</span>
+                  <span className="inline-block px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 text-xs font-medium">{viewingNews.category || '-'}</span>
                 </div>
-                <div>
+                <div className="bg-white/5 rounded-xl p-3">
                   <label className="block text-white/40 text-xs mb-1">来源</label>
                   <span className="text-white/80 text-sm">{viewingNews.source || '-'}</span>
                 </div>
-                <div>
+                <div className="bg-white/5 rounded-xl p-3">
                   <label className="block text-white/40 text-xs mb-1">浏览量</label>
                   <span className="text-white/80 text-sm">{viewingNews.views || 0}</span>
                 </div>
-                <div>
+                <div className="bg-white/5 rounded-xl p-3">
+                  <label className="block text-white/40 text-xs mb-1">状态</label>
+                  <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
+                    viewingNews.status === 'published' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+                  }`}>
+                    {viewingNews.status === 'published' ? '已发布' : '草稿'}
+                  </span>
+                </div>
+                <div className="bg-white/5 rounded-xl p-3">
                   <label className="block text-white/40 text-xs mb-1">发布时间</label>
                   <span className="text-white/80 text-sm">{new Date(viewingNews.created_at).toLocaleString('zh-CN')}</span>
                 </div>
+                {viewingNews.hot != null && (
+                  <div className="bg-white/5 rounded-xl p-3">
+                    <label className="block text-white/40 text-xs mb-1">热度</label>
+                    <span className="text-white/80 text-sm">{viewingNews.hot}</span>
+                  </div>
+                )}
               </div>
               {viewingNews.url && (
-                <div>
-                  <label className="block text-white/40 text-xs mb-1">原文链接</label>
+                <div className="bg-white/5 rounded-xl p-3">
+                  <label className="block text-white/40 text-xs mb-2">原文链接</label>
                   <a href={viewingNews.url} target="_blank" rel="noopener noreferrer"
-                    className="text-blue-400 hover:text-blue-300 text-sm underline break-all">
-                    {viewingNews.url}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500/20 text-blue-400 text-sm hover:bg-blue-500/30 transition-colors">
+                    <ExternalLink className="w-4 h-4" />
+                    <span className="truncate max-w-md">{viewingNews.url}</span>
                   </a>
                 </div>
               )}
               {viewingNews.image && (
-                <div>
-                  <label className="block text-white/40 text-xs mb-1">封面图片</label>
-                  <img src={viewingNews.image} alt={viewingNews.title} className="w-full max-h-60 object-cover rounded-xl" />
+                <div className="bg-white/5 rounded-xl p-3">
+                  <label className="block text-white/40 text-xs mb-2">封面图片</label>
+                  <img src={viewingNews.image} alt={viewingNews.title} className="w-full max-h-64 object-cover rounded-xl" />
                 </div>
               )}
-              <div className="flex justify-end pt-4">
-                <button onClick={() => setViewingNews(null)} className="px-6 py-3 rounded-xl bg-white/5 text-white/60 hover:text-white">
+              {viewingNews.excerpt && (
+                <div className="bg-white/5 rounded-xl p-4">
+                  <label className="block text-white/40 text-xs mb-2">摘要</label>
+                  <p className="text-white/70 text-sm leading-relaxed">{viewingNews.excerpt}</p>
+                </div>
+              )}
+              {viewingNews.content && (
+                <div className="bg-white/5 rounded-xl p-4">
+                  <label className="block text-white/40 text-xs mb-3">正文内容</label>
+                  <div className="bg-[#0a0a0f] rounded-xl p-4 max-h-96 overflow-y-auto">
+                    {renderNewsContent(viewingNews.content)}
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-end pt-2">
+                <button onClick={() => setViewingNews(null)} className="px-6 py-3 rounded-xl bg-white/5 text-white/60 hover:text-white hover:bg-white/10 transition-colors">
                   关闭
                 </button>
               </div>
@@ -2156,7 +2229,12 @@ function NewsEditor({ news, onClose, onSave }) {
     title: news?.title || '',
     source: news?.source || '',
     category: news?.category || '技术动态',
-    url: news?.url || ''
+    url: news?.url || '',
+    excerpt: news?.excerpt || '',
+    content: news?.content || '',
+    status: news?.status || 'draft',
+    image: news?.image || '',
+    hot: news?.hot || ''
   });
   const [saving, setSaving] = useState(false);
 
@@ -2164,10 +2242,12 @@ function NewsEditor({ news, onClose, onSave }) {
     e.preventDefault();
     setSaving(true);
     try {
+      const updateData = { ...formData };
+      if (updateData.hot === '') updateData.hot = null;
       if (news) {
-        await supabase.from('news').update(formData).eq('id', news.id);
+        await supabase.from('news').update(updateData).eq('id', news.id);
       } else {
-        await supabase.from('news').insert([{ ...formData, created_at: new Date().toISOString() }]);
+        await supabase.from('news').insert([{ ...updateData, created_at: new Date().toISOString() }]);
       }
       onSave();
     } catch (err) {
@@ -2178,7 +2258,7 @@ function NewsEditor({ news, onClose, onSave }) {
 
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-      <div className="bg-[#12121a] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-[#12121a] rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b border-white/10 flex items-center justify-between">
           <h3 className="text-xl font-bold text-white">{news ? '编辑资讯' : '新建资讯'}</h3>
           <button onClick={onClose} className="text-white/60 hover:text-white">
@@ -2188,32 +2268,22 @@ function NewsEditor({ news, onClose, onSave }) {
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
             <label className="block text-white/60 text-sm mb-2">标题</label>
-            <input
-              type="text"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white"
-              required
-            />
+            <input type="text" value={formData.title}
+              onChange={e => setFormData({ ...formData, title: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white" required />
           </div>
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid md:grid-cols-3 gap-4">
             <div>
               <label className="block text-white/60 text-sm mb-2">来源</label>
-              <input
-                type="text"
-                value={formData.source}
-                onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white"
-                required
-              />
+              <input type="text" value={formData.source}
+                onChange={e => setFormData({ ...formData, source: e.target.value })}
+                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white" placeholder="如：掘金、CSDN" />
             </div>
             <div>
               <label className="block text-white/60 text-sm mb-2">分类</label>
-              <select
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white"
-              >
+              <select value={formData.category}
+                onChange={e => setFormData({ ...formData, category: e.target.value })}
+                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white">
                 <option value="前端趋势">前端趋势</option>
                 <option value="AI编程">AI编程</option>
                 <option value="工程化">工程化</option>
@@ -2221,31 +2291,56 @@ function NewsEditor({ news, onClose, onSave }) {
                 <option value="产品发布">产品发布</option>
               </select>
             </div>
+            <div>
+              <label className="block text-white/60 text-sm mb-2">状态</label>
+              <select value={formData.status}
+                onChange={e => setFormData({ ...formData, status: e.target.value })}
+                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white">
+                <option value="draft">草稿</option>
+                <option value="published">已发布</option>
+              </select>
+            </div>
           </div>
           <div>
             <label className="block text-white/60 text-sm mb-2">原文链接</label>
-            <input
-              type="url"
-              value={formData.url}
-              onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white"
-              placeholder="https://"
-            />
+            <input type="url" value={formData.url}
+              onChange={e => setFormData({ ...formData, url: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white" placeholder="https://" />
           </div>
-          <div className="flex justify-end gap-4 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-6 py-3 rounded-xl bg-white/5 text-white/60 hover:text-white"
-            >
-              取消
+          <div>
+            <label className="block text-white/60 text-sm mb-2">摘要</label>
+            <textarea value={formData.excerpt}
+              onChange={e => setFormData({ ...formData, excerpt: e.target.value })}
+              rows={3} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white resize-none" placeholder="简要描述资讯内容..." />
+          </div>
+          <div>
+            <label className="block text-white/60 text-sm mb-2">正文内容</label>
+            <textarea value={formData.content}
+              onChange={e => setFormData({ ...formData, content: e.target.value })}
+              rows={10} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white resize-none font-mono text-sm" placeholder="支持 Markdown 格式或纯文本..." />
+          </div>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-white/60 text-sm mb-2">封面图片URL</label>
+              <input type="text" value={formData.image}
+                onChange={e => setFormData({ ...formData, image: e.target.value })}
+                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white" placeholder="https://" />
+            </div>
+            <div>
+              <label className="block text-white/60 text-sm mb-2">热度</label>
+              <input type="number" value={formData.hot}
+                onChange={e => setFormData({ ...formData, hot: e.target.value })}
+                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white" placeholder="数字，越高越靠前" />
+            </div>
+          </div>
+          <div className="flex gap-4 pt-4">
+            <button type="submit" disabled={saving}
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white disabled:opacity-50">
+              {saving ? '保存中...' : '保存资讯'}
             </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white disabled:opacity-50"
-            >
-              {saving ? '保存中...' : '保存'}
+            <button type="button" onClick={onClose}
+              className="px-6 py-3 rounded-xl bg-white/5 text-white/60">
+              取消
             </button>
           </div>
         </form>

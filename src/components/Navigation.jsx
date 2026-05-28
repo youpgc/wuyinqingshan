@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Sparkles } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 const Navigation = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -14,20 +15,29 @@ const Navigation = () => {
     { name: '作品', id: 'portfolio', order: 2 },
     { name: '博客', id: 'blog', order: 3 },
     { name: '资讯', id: 'news', order: 4 },
-  ];
+    ];
 
-  // 从 localStorage 读取模块配置，动态过滤和排序导航项
+  // 从 Supabase 接口获取模块配置，动态过滤和排序导航项
   useEffect(() => {
-    const saved = localStorage.getItem('wuyinqingshan_modules');
-    if (saved) {
+    const loadModules = async () => {
       try {
-        const modules = JSON.parse(saved);
-        // 按配置中的 order 排序并获取启用的 ID
-        const sortedModules = modules.filter(m => m.enabled).sort((a, b) => a.order - b.order);
-        const enabledIds = sortedModules.map(m => m.id);
-        setEnabledModuleIds(enabledIds);
-      } catch {}
-    }
+        const { data } = await supabase
+          .from('site_config')
+          .select('value')
+          .eq('key', 'modules')
+          .single();
+        
+        if (data?.value) {
+          const modules = JSON.parse(data.value);
+          const sortedModules = modules.filter(m => m.enabled).sort((a, b) => a.order - b.order);
+          const enabledIds = sortedModules.map(m => m.id);
+          setEnabledModuleIds(enabledIds);
+        }
+      } catch (err) {
+        console.error('Failed to load modules from API:', err);
+      }
+    };
+    loadModules();
   }, []);
 
   // 根据模块配置过滤和排序导航项（首页始终显示在最前面）

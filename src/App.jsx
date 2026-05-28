@@ -104,10 +104,21 @@ function Home() {
   const [modules, setModules] = useState(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem('wuyinqingshan_modules');
-    if (saved) {
-      try { setModules(JSON.parse(saved)); } catch {}
-    }
+    const loadModules = async () => {
+      try {
+        const { data } = await supabase
+          .from('site_config')
+          .select('value')
+          .eq('key', 'modules')
+          .single();
+        if (data?.value) {
+          setModules(JSON.parse(data.value));
+        }
+      } catch (err) {
+        console.error('Failed to load modules from API:', err);
+      }
+    };
+    loadModules();
   }, []);
 
   const enabledModules = modules
